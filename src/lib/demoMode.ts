@@ -2,7 +2,8 @@ import type {
   Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, Volunteer,
 } from '@/types';
 
-export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !hasSupabaseConfig;
 const STORAGE_KEY = 'civicsync-demo-store-v1';
 
 const now = new Date().toISOString();

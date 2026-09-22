@@ -11,6 +11,8 @@ Security: RLS on every table, owner-scoped policies via auth.uid(),
 role-based access via profiles.role. Public registration creates 'citizen' only.
 */
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ============================================================
 -- PROFILES
 -- ============================================================
@@ -44,7 +46,7 @@ CREATE TABLE IF NOT EXISTS report_categories (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  report_id text NOT NULL UNIQUE DEFAULT ('RPT-' || upper(substr(encode(gen_random_bytes(6), 'hex'), 1, 8))),
+  report_id text NOT NULL UNIQUE DEFAULT ('RPT-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))),
   title text NOT NULL,
   description text NOT NULL,
   category_id uuid REFERENCES report_categories(id),
@@ -212,7 +214,7 @@ CREATE INDEX IF NOT EXISTS idx_vavail_volunteer ON volunteer_availability(volunt
 -- ============================================================
 CREATE TABLE IF NOT EXISTS tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  task_id text NOT NULL UNIQUE DEFAULT ('TSK-' || upper(substr(encode(gen_random_bytes(6), 'hex'), 1, 8))),
+  task_id text NOT NULL UNIQUE DEFAULT ('TSK-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))),
   report_id uuid NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
   title text NOT NULL,
   description text,
