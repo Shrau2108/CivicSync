@@ -13,6 +13,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, fullName: string, role: UserRole, phone?: string) => Promise<{ error: string | null; message?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  startDemoSession: (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => void;
   demoMode: boolean;
 }
 
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const setDemoSession = useCallback((role: 'citizen' | 'supervisor' | 'volunteer') => {
+  const setDemoSession = useCallback((role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
     const demo = demoRoleProfile(role);
     const demoUser = { id: demo.id, email: demo.email, app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: demo.created_at } as User;
     setUser(demoUser);
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (DEMO_MODE) {
-      const savedRole = sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | null;
+      const savedRole = sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null;
       if (savedRole) setDemoSession(savedRole);
       setLoading(false);
       return;
@@ -89,13 +90,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     if (DEMO_MODE) {
-      const role = email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : 'citizen';
+      const role = email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : email.includes('admin') ? 'admin' : 'citizen';
       sessionStorage.setItem('civicsync-demo-role', role);
       setDemoSession(role);
       return { error: null };
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error ? formatAuthError(error.message) : null };
+  };
+
+  const startDemoSession = (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+    sessionStorage.setItem('civicsync-demo-role', role);
+    window.location.reload();
   };
 
   const signUp = async (
@@ -137,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setSession(null);
       setUser(null);
+      window.location.reload();
       return;
     }
     await supabase.auth.signOut();
@@ -151,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, loading, signIn, signUp, signOut, refreshProfile, demoMode: DEMO_MODE }}
+      value={{ session, user, profile, loading, signIn, signUp, signOut, refreshProfile, startDemoSession, demoMode: DEMO_MODE }}
     >
       {children}
     </AuthContext.Provider>

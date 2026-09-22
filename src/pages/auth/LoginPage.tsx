@@ -4,7 +4,7 @@ import { Leaf, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-r
 import { useAuth } from '@/context/AuthContext';
 
 export function LoginPage() {
-  const { signIn, demoMode } = useAuth();
+  const { signIn, startDemoSession, demoMode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string })?.from || '/app';
@@ -14,7 +14,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [demoRole, setDemoRole] = useState<'citizen' | 'supervisor' | 'volunteer'>('citizen');
+  const [demoRole, setDemoRole] = useState<'citizen' | 'supervisor' | 'volunteer' | 'admin'>('citizen');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,19 +43,17 @@ export function LoginPage() {
           <h1 className="text-xl font-bold text-charcoal-800 mb-1">Welcome Back</h1>
           <p className="text-sm text-charcoal-500 mb-6">Sign in to your account to continue</p>
 
-          {demoMode && (
-            <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-              <strong>Frontend Demo Mode</strong>
-              <p className="mt-1">Choose a role to enter a local dashboard demo. No Supabase account is used.</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {(['citizen', 'supervisor', 'volunteer'] as const).map((option) => (
-                  <button key={option} type="button" onClick={() => setDemoRole(option)} className={`rounded-md border px-2 py-2 text-xs capitalize ${demoRole === option ? 'border-primary-600 bg-primary-600 text-white' : 'border-amber-300 bg-white text-charcoal-700'}`}>
-                    {option}
-                  </button>
-                ))}
-              </div>
+          <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <strong>Explore the interface</strong>
+            <p className="mt-1">Preview a role without creating an account or changing Supabase data.</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {(['citizen', 'supervisor', 'volunteer', 'admin'] as const).map((option) => (
+                <button key={option} type="button" onClick={() => startDemoSession(option)} className="rounded-md border border-amber-300 bg-white px-2 py-2 text-xs capitalize text-charcoal-700 hover:border-primary-500 hover:text-primary-700">
+                  {option === 'admin' ? 'Administrator' : option}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {error && (
             <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm animate-fade-in">

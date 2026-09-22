@@ -3,7 +3,8 @@ import type {
 } from '@/types';
 
 const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
-export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !hasSupabaseConfig;
+const hasDemoSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !hasSupabaseConfig || hasDemoSession;
 const STORAGE_KEY = 'civicsync-demo-store-v1';
 
 const now = new Date().toISOString();
@@ -11,6 +12,7 @@ const demoProfiles: Profile[] = [
   { id: 'demo-citizen', email: 'citizen@demo.local', full_name: 'Demo Citizen', phone: null, role: 'citizen', avatar_url: null, is_active: true, created_at: now, updated_at: now },
   { id: 'demo-supervisor', email: 'supervisor@demo.local', full_name: 'Demo Supervisor', phone: null, role: 'supervisor', avatar_url: null, is_active: true, created_at: now, updated_at: now },
   { id: 'demo-volunteer', email: 'volunteer@demo.local', full_name: 'Demo Volunteer', phone: null, role: 'volunteer', avatar_url: null, is_active: true, created_at: now, updated_at: now },
+  { id: 'demo-admin', email: 'admin@demo.local', full_name: 'Demo Administrator', phone: null, role: 'admin', avatar_url: null, is_active: true, created_at: now, updated_at: now },
 ];
 
 export const demoCategories: ReportCategory[] = [
@@ -67,7 +69,7 @@ export function demoProfile(id: string): Profile {
   return demoProfiles.find((profile) => profile.id === id) || demoProfiles[0];
 }
 
-export function demoRoleProfile(role: 'citizen' | 'supervisor' | 'volunteer'): Profile {
+export function demoRoleProfile(role: 'citizen' | 'supervisor' | 'volunteer' | 'admin'): Profile {
   return demoProfiles.find((profile) => profile.role === role) || demoProfiles[0];
 }
 
