@@ -4,10 +4,6 @@ import { DEMO_MODE, demoRoleProfile } from '@/lib/demoMode';
 import { supabase } from '@/lib/supabase';
 import {
   auth as firebaseAuth,
-  db as firestoreDb,
-  doc,
-  getDoc,
-  setDoc,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   firebaseSignOut,
@@ -81,58 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(demo);
   }, []);
 
-  // Fetch or create profile in Firestore or Supabase
-  const fetchProfile = useCallback(async (userId: string, email?: string | null, fullName?: string | null) => {
-    if (authProvider === 'firebase') {
-      try {
-        const profileRef = doc(firestoreDb, 'profiles', userId);
-        const snap = await getDoc(profileRef);
-        if (snap.exists()) {
-          setProfile(snap.data() as Profile);
-          return snap.data() as Profile;
-        } else {
-          // Auto-initialize profile in Firestore if it doesn't exist yet
-          const now = new Date().toISOString();
-          const newProfile: Profile = {
-            id: userId,
-            email: email || '',
-            full_name: fullName || email?.split('@')[0] || 'Civic User',
-            phone: null,
-            role: 'citizen',
-            avatar_url: null,
-            is_active: true,
-            created_at: now,
-            updated_at: now,
-          };
-          await setDoc(profileRef, newProfile);
-          setProfile(newProfile);
-          return newProfile;
-        }
-      } catch (err) {
-        console.error('Error fetching Firebase profile:', err);
-        // Fallback local profile
-        const now = new Date().toISOString();
-        const fallback: Profile = {
-          id: userId,
-          email: email || '',
-          full_name: fullName || 'Civic User',
-          phone: null,
-          role: 'citizen',
-          avatar_url: null,
-          is_active: true,
-          created_at: now,
-          updated_at: now,
-        };
-        setProfile(fallback);
-        return fallback;
-      }
-    } else {
-      // Supabase fetch
+  // ──────────────────────────────────────────────
+  // PROFILES ARE ALWAYS STORED IN SUPABASE
+  // Firebase is used ONLY for authentication.
+  // ──────────────────────────────────────────────
+
+  /** Fetch profile from Supabase by user ID */
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
       if (error) {
         console.error('Error fetching Supabase profile:', error);
         setProfile(null);
@@ -140,8 +98,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setProfile(data as Profile | null);
       return data as Profile | null;
+    } catch (err) {
+      console.error('Unexpected error fetching profile:', err);
+      setProfile(null);
+      return null;
     }
-  }, [authProvider]);
+  }, []);
+
+  /** Create a new profile in Supabase for a Firebase-authenticated user */
+  const createSupabaseProfile = useCallback(async (
+    userId: string,
+    email: string,
+    fullName: string,
+    role: UserRole,
+    phone?: string
+  ): Promise<Profile | null> => {
+    const now = new Date().toISOString();
+    const newProfile: Profile = {
+      id: userId,
+      email,
+      full_name: fullName,
+      phone: phone || null,
+      role,
+      avatar_url: null,
+      is_active: true,
+      created_at: now,
+      updated_at: now,
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(newProfile, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating Supabase profile:', error);
+        // Still set the local profile so the user can use the app
+        setProfile(newProfile);
+        return newProfile;
+      }
+      setProfile(data as Profile);
+      return data as Profile;
+    } catch (err) {
+      console.error('Unexpected error creating profile:', err);
+      setProfile(newProfile);
+      return newProfile;
+    }
+  }, []);
+
+  /** Fetch or auto-create profile for a logged-in user */
+  const fetchOrCreateProfile = useCallback(async (
+    userId: string,
+    email?: string | null,
+    fullName?: string | null
+  ) => {
+    const existing = await fetchProfile(userId);
+    if (existing) return existing;
+
+    // Profile doesn't exist yet — create one as 'citizen' by default
+    return createSupabaseProfile(
+      userId,
+      email || '',
+      fullName || email?.split('@')[0] || 'Civic User',
+      'citizen'
+    );
+  }, [fetchProfile, createSupabaseProfile]);
 
   useEffect(() => {
     if (DEMO_MODE) {
@@ -154,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     if (authProvider === 'firebase') {
-      // Firebase Auth Listener
+      // Firebase Auth Listener — profiles come from Supabase
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser: FirebaseUser | null) => {
         if (!mounted) return;
         if (fbUser) {
@@ -166,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const token = await fbUser.getIdToken();
           setSession({ user: appUser, access_token: token });
           setUser(appUser);
-          await fetchProfile(fbUser.uid, fbUser.email, fbUser.displayName);
+          await fetchOrCreateProfile(fbUser.uid, fbUser.email, fbUser.displayName);
         } else {
           setSession(null);
           setUser(null);
@@ -225,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authListener.subscription.unsubscribe();
       };
     }
-  }, [authProvider, fetchProfile, setDemoSession]);
+  }, [authProvider, fetchProfile, fetchOrCreateProfile, setDemoSession]);
 
   const signIn = async (email: string, password: string) => {
     if (DEMO_MODE) {
@@ -243,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await fbUser.getIdToken();
         setUser(appUser);
         setSession({ user: appUser, access_token: token });
-        await fetchProfile(fbUser.uid, fbUser.email, fbUser.displayName);
+        await fetchOrCreateProfile(fbUser.uid, fbUser.email, fbUser.displayName);
         return { error: null };
       } catch (err: unknown) {
         return { error: formatAuthError(err instanceof Error ? err.message : String(err)) };
@@ -269,33 +292,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (authProvider === 'firebase') {
       try {
+        // Step 1: Create user in Firebase Auth
         const cred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
         await updateFirebaseProfile(cred.user, { displayName: fullName });
 
-        // Save complete profile in Firestore
-        const now = new Date().toISOString();
-        const profileData: Profile = {
-          id: cred.user.uid,
+        // Step 2: Create profile in SUPABASE (not Firestore)
+        const profileData = await createSupabaseProfile(
+          cred.user.uid,
           email,
-          full_name: fullName,
-          phone: phone || null,
+          fullName,
           role,
-          avatar_url: null,
-          is_active: true,
-          created_at: now,
-          updated_at: now,
-        };
-        try {
-          await setDoc(doc(firestoreDb, 'profiles', cred.user.uid), profileData);
-        } catch (dbErr) {
-          console.warn('Could not write profile to Firestore:', dbErr);
-        }
+          phone
+        );
 
         const appUser: AppUser = { id: cred.user.uid, email: cred.user.email, full_name: fullName };
         const token = await cred.user.getIdToken();
         setUser(appUser);
         setSession({ user: appUser, access_token: token });
-        setProfile(profileData);
+        if (profileData) setProfile(profileData);
         return { error: null };
       } catch (err: unknown) {
         return { error: formatAuthError(err instanceof Error ? err.message : String(err)) };
@@ -336,7 +350,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await fbUser.getIdToken();
       setUser(appUser);
       setSession({ user: appUser, access_token: token });
-      await fetchProfile(fbUser.uid, fbUser.email, fbUser.displayName);
+      // Fetch or create profile in Supabase
+      await fetchOrCreateProfile(fbUser.uid, fbUser.email, fbUser.displayName);
       return { error: null };
     } catch (err: unknown) {
       return { error: formatAuthError(err instanceof Error ? err.message : String(err)) };
@@ -384,7 +399,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id, user.email, user.full_name);
+    if (user) await fetchProfile(user.id);
   };
 
   return (

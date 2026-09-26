@@ -11,14 +11,11 @@ import {
   type Auth,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  type Firestore,
-} from 'firebase/firestore';
+
+// ──────────────────────────────────────────────
+// Firebase is used ONLY for Authentication.
+// All data (profiles, reports, etc.) lives in Supabase.
+// ──────────────────────────────────────────────
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -37,10 +34,8 @@ export const isFirebaseConfigured = Boolean(
 
 let app: FirebaseApp;
 let auth: Auth;
-let db: Firestore;
 
 if (!getApps().length) {
-  // Use config or safe fallback config if not yet set
   app = initializeApp(
     isFirebaseConfigured
       ? firebaseConfig
@@ -58,18 +53,12 @@ if (!getApps().length) {
 }
 
 auth = getAuth(app);
-db = getFirestore(app);
 
 export const googleProvider = new GoogleAuthProvider();
 
 export {
   app,
   auth,
-  db,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   firebaseSignOut,
