@@ -36,7 +36,6 @@ export async function fetchReports(filters?: {
     .select(`
       *,
       category:report_categories(*),
-      reporter:profiles!reports_reporter_id_fkey(*),
       location:report_locations(*)
     `)
     .order('created_at', { ascending: false });
@@ -47,7 +46,19 @@ export async function fetchReports(filters?: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data as unknown as Report[];
+  
+  const reports = data as any[];
+  const reporterIds = [...new Set(reports.map(r => r.reporter_id).filter(Boolean))];
+  if (reporterIds.length > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('*').in('id', reporterIds);
+    if (profiles) {
+      reports.forEach(r => {
+        r.reporter = profiles.find(p => p.id === r.reporter_id);
+      });
+    }
+  }
+
+  return reports as unknown as Report[];
 }
 
 export async function fetchReportById(id: string): Promise<Report | null> {
@@ -57,14 +68,21 @@ export async function fetchReportById(id: string): Promise<Report | null> {
     .select(`
       *,
       category:report_categories(*),
-      reporter:profiles!reports_reporter_id_fkey(*),
       location:report_locations(*),
       media:report_media(*)
     `)
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
-  return data as unknown as Report | null;
+  if (!data) return null;
+
+  const report = data as any;
+  if (report.reporter_id) {
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', report.reporter_id).maybeSingle();
+    if (profile) report.reporter = profile;
+  }
+
+  return report as unknown as Report;
 }
 
 export async function fetchReportsByReporter(reporterId: string): Promise<Report[]> {
@@ -717,3 +735,4 @@ export async function updateProfile(id: string, updates: Partial<import('@/types
   const { error } = await supabase.from('profiles').update(updates).eq('id', id);
   if (error) throw error;
 }
+

@@ -7,6 +7,7 @@ import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { fetchReportsByReporter } from '@/services/api';
+import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
 import type { Report } from '@/types';
 
@@ -31,7 +32,25 @@ export function TrackReportsPage() {
     }
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    if (!user) return;
+    
+    // Subscribe to realtime updates for this user's reports
+    const channel = supabase.channel('track_reports_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reports', filter: `reporter_id=eq.${user.id}` },
+        () => {
+          load();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load, user]);
 
   const filtered = reports.filter(r =>
     !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.report_id.toLowerCase().includes(search.toLowerCase())

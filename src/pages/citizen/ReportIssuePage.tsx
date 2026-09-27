@@ -108,24 +108,32 @@ export function ReportIssuePage() {
   const canProceedStep1 = title.trim().length >= 5 && description.trim().length >= 10 && categoryId;
   const canProceedStep2 = latitude !== null && longitude !== null;
 
+  const [createdReportId, setCreatedReportId] = useState<string | null>(null);
+
   const handleSubmit = async () => {
     if (!user) return;
     setSubmitting(true);
     setError(null);
     setUploadProgress(0);
     try {
-      const report = await createReport({
-        title: title.trim(),
-        description: description.trim(),
-        category_id: categoryId,
-        severity,
-        affected_people: affectedPeople,
-        additional_notes: additionalNotes.trim() || undefined,
-        reporter_id: user.id,
-      });
+      let reportId = createdReportId;
+
+      if (!reportId) {
+        const report = await createReport({
+          title: title.trim(),
+          description: description.trim(),
+          category_id: categoryId,
+          severity,
+          affected_people: affectedPeople,
+          additional_notes: additionalNotes.trim() || undefined,
+          reporter_id: user.id,
+        });
+        reportId = report.id;
+        setCreatedReportId(reportId);
+      }
 
       await createReportLocation({
-        report_id: report.id,
+        report_id: reportId,
         address: address.trim() || undefined,
         latitude: latitude!,
         longitude: longitude!,
@@ -133,13 +141,13 @@ export function ReportIssuePage() {
 
       for (let i = 0; i < files.length; i++) {
         setUploadProgress(Math.round(((i / files.length) * 100)));
-        await uploadReportMedia(report.id, files[i], user.id);
+        await uploadReportMedia(reportId, files[i], user.id);
       }
       setUploadProgress(100);
 
-      navigate(`/app/reports/${report.id}`, { state: { justCreated: true } });
+      navigate(`/app/reports/${reportId}`, { state: { justCreated: true } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit report');
+      setError(err instanceof Error ? err.message : 'Failed to complete submission. You can safely retry.');
       setSubmitting(false);
     }
   };

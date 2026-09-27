@@ -10,6 +10,7 @@ import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { fetchReportById, fetchFeedbackForReport } from '@/services/api';
+import { supabase } from '@/lib/supabase';
 import { formatDateTime, timeAgo, REPORT_STATUS_LABELS } from '@/lib/utils';
 import type { Report, Feedback } from '@/types';
 
@@ -54,7 +55,32 @@ export function ReportDetailsPage() {
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    if (!id) return;
+    
+    // Subscribe to realtime updates for this specific report
+    const channel = supabase.channel(`report_details_${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reports', filter: `id=eq.${id}` },
+        () => {
+          load();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'report_media', filter: `report_id=eq.${id}` },
+        () => {
+          load();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load, id]);
 
   if (loading) return <LoadingState message="Loading report..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
