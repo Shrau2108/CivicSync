@@ -141,6 +141,22 @@ export async function updateReportStatus(reportId: string, status: string, revie
   if (error) throw error;
 }
 
+export async function reviewReport(
+  reportId: string,
+  status: 'under_review' | 'verified' | 'rejected',
+  reviewerId: string
+): Promise<void> {
+  if (DEMO_MODE) {
+    demoUpdateReportStatus(reportId, status, reviewerId);
+    return;
+  }
+  const { error } = await supabase.rpc('review_report', {
+    p_report_id: reportId,
+    p_status: status,
+  });
+  if (error) throw error;
+}
+
 export async function updateReportPriority(reportId: string, priorityLevel: string, priorityScore: number): Promise<void> {
   const { error } = await supabase
     .from('reports')

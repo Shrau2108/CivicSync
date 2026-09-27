@@ -7,15 +7,14 @@ import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
-import { fetchReports, updateReportStatus, createNotification, createAuditLog, createDuplicateCandidate, fetchCategories } from '@/services/api';
+import { fetchReports, reviewReport, createDuplicateCandidate } from '@/services/api';
 import { detectDuplicates as detectDups } from '@/lib/duplicateDetection';
 import { formatDate } from '@/lib/utils';
-import type { Report, ReportCategory } from '@/types';
+import type { Report } from '@/types';
 
 export function IncomingReportsPage() {
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
-  const [categories, setCategories] = useState<ReportCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -26,9 +25,8 @@ export function IncomingReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [r, c] = await Promise.all([fetchReports(), fetchCategories()]);
+      const r = await fetchReports();
       setReports(r.filter(rpt => rpt.status === 'submitted' || rpt.status === 'under_review'));
-      setCategories(c);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reports');
     } finally {
@@ -42,18 +40,23 @@ export function IncomingReportsPage() {
     if (!user) return;
     setActionLoading(report.id);
     try {
-      await updateReportStatus(report.id, 'verified', user.id);
-      await createNotification({
-        user_id: report.reporter_id,
-        title: 'Report Verified',
-        description: `Your report "${report.title}" has been verified by a supervisor.`,
-        category: 'report_reviewed',
-        related_report_id: report.id,
-      });
-      await createAuditLog({ action: 'verify_report', entity_type: 'report', entity_id: report.id });
-      load();
+      await reviewReport(report.id, 'verified', user.id);
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to verify report');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleStartReview = async (report: Report) => {
+    if (!user) return;
+    setActionLoading(report.id);
+    try {
+      await reviewReport(report.id, 'under_review', user.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start report review');
     } finally {
       setActionLoading(null);
     }
@@ -63,17 +66,9 @@ export function IncomingReportsPage() {
     if (!user || !rejectModal) return;
     setActionLoading(rejectModal.id);
     try {
-      await updateReportStatus(rejectModal.id, 'rejected', user.id);
-      await createNotification({
-        user_id: rejectModal.reporter_id,
-        title: 'Report Rejected',
-        description: `Your report "${rejectModal.title}" was rejected. Please review and resubmit if needed.`,
-        category: 'report_reviewed',
-        related_report_id: rejectModal.id,
-      });
-      await createAuditLog({ action: 'reject_report', entity_type: 'report', entity_id: rejectModal.id });
+      await reviewReport(rejectModal.id, 'rejected', user.id);
       setRejectModal(null);
-      load();
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reject report');
     } finally {
@@ -165,6 +160,11 @@ export function IncomingReportsPage() {
                     <button onClick={() => handleCheckDuplicates(report)} disabled={actionLoading === report.id} className="btn-secondary text-sm">
                       <Copy className="w-4 h-4" /> Check Duplicates
                     </button>
+                    {report.status === 'submitted' && (
+                      <button onClick={() => handleStartReview(report)} disabled={actionLoading === report.id} className="btn-secondary text-sm">
+                        {actionLoading === report.id ? 'Starting...' : 'Start Review'}
+                      </button>
+                    )}
                     <button onClick={() => handleVerify(report)} disabled={actionLoading === report.id} className="btn-primary text-sm">
                       <CheckCircle2 className="w-4 h-4" /> Verify
                     </button>
