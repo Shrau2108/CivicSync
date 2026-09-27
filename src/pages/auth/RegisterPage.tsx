@@ -42,6 +42,7 @@ export function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -53,15 +54,19 @@ export function RegisterPage() {
     }
 
     setLoading(true);
-    const { error, message } = await signUp(email, password, fullName, role, phone);
-    setLoading(false);
-
-    if (error) {
-      setError(error);
-    } else if (message) {
-      setMessage(message);
-    } else {
-      navigate('/app');
+    try {
+      const { error, message } = await signUp(email, password, fullName, role, phone);
+      if (error) {
+        setError(error);
+      } else if (message) {
+        setMessage(message);
+      } else {
+        navigate('/app');
+      }
+    } catch (caughtError) {
+      setError(getSignupErrorMessage(caughtError));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,16 +98,19 @@ export function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} method="post" className="space-y-4">
             <div>
-              <label className="label">Full Name</label>
+              <label htmlFor="full-name" className="label">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
                 <input
+                  id="full-name"
+                  name="full_name"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
+                  autoComplete="name"
                   className="input pl-10"
                   placeholder="John Doe"
                 />
@@ -110,14 +118,17 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="label">Email Address</label>
+              <label htmlFor="email" className="label">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
                 <input
+                  id="email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                   className="input pl-10"
                   placeholder="you@example.com"
                 />
@@ -125,13 +136,16 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="label">Phone Number <span className="text-charcoal-400 font-normal">(optional)</span></label>
+              <label htmlFor="phone" className="label">Phone Number <span className="text-charcoal-400 font-normal">(optional)</span></label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
                 <input
+                  id="phone"
+                  name="phone"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  autoComplete="tel"
                   className="input pl-10"
                   placeholder="+1 234 567 890"
                 />
@@ -139,14 +153,17 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <label htmlFor="password" className="label">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   className="input pl-10 pr-10"
                   placeholder="••••••••"
                 />
@@ -174,14 +191,17 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="label">Confirm Password</label>
+              <label htmlFor="confirm-password" className="label">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
                 <input
+                  id="confirm-password"
+                  name="confirm_password"
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   className="input pl-10"
                   placeholder="••••••••"
                 />
@@ -242,4 +262,12 @@ export function RegisterPage() {
       </div>
     </div>
   );
+}
+
+function getSignupErrorMessage(error: unknown): string {
+  if (typeof error === 'string' && error.trim()) return error;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+  return 'Unable to create your account. Check your connection and Supabase configuration, then try again.';
 }
