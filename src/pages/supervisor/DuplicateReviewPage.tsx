@@ -106,20 +106,20 @@ export function DuplicateReviewPage() {
               <CardBody>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">Report</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Report</p>
                     <Link to={`/app/reports/${candidate.report_id}`} className="block">
-                      <div className="p-3 rounded-lg bg-charcoal-50 border border-charcoal-200 hover:border-primary-300 transition-colors">
-                        <p className="font-medium text-charcoal-800 text-sm">{candidate.report?.title || 'Unknown'}</p>
-                        <p className="text-xs text-charcoal-400 mt-1">{candidate.report?.report_id}</p>
+                      <div className="p-3 rounded-lg bg-background border border-border hover:border-primary-300 transition-colors">
+                        <p className="font-medium text-foreground text-sm">{candidate.report?.title || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{candidate.report?.report_id}</p>
                       </div>
                     </Link>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">Potential Duplicate</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Potential Duplicate</p>
                     <Link to={`/app/reports/${candidate.candidate_report_id}`} className="block">
-                      <div className="p-3 rounded-lg bg-charcoal-50 border border-charcoal-200 hover:border-primary-300 transition-colors">
-                        <p className="font-medium text-charcoal-800 text-sm">{candidate.candidateReport?.title || 'Unknown'}</p>
-                        <p className="text-xs text-charcoal-400 mt-1">{candidate.candidateReport?.report_id}</p>
+                      <div className="p-3 rounded-lg bg-background border border-border hover:border-primary-300 transition-colors">
+                        <p className="font-medium text-foreground text-sm">{candidate.candidateReport?.title || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{candidate.candidateReport?.report_id}</p>
                       </div>
                     </Link>
                   </div>
@@ -134,14 +134,14 @@ export function DuplicateReviewPage() {
                   }`}>
                     {candidate.similarity_type.replace('_', ' ')} similarity
                   </span>
-                  <span className="text-sm font-mono text-charcoal-600">Score: {candidate.similarity_score.toFixed(0)}%</span>
-                  <span className="text-xs text-charcoal-400">{formatDate(candidate.created_at)}</span>
+                  <span className="text-sm font-mono text-muted-foreground">Score: {candidate.similarity_score.toFixed(0)}%</span>
+                  <span className="text-xs text-muted-foreground">{formatDate(candidate.created_at)}</span>
                 </div>
 
                 {candidate.similarity_reasons && (
-                  <div className="p-3 rounded-lg bg-charcoal-50 border border-charcoal-200 mb-4">
-                    <p className="text-xs font-medium text-charcoal-400 uppercase mb-1">Reasons</p>
-                    <p className="text-sm text-charcoal-600">{candidate.similarity_reasons}</p>
+                  <div className="p-3 rounded-lg bg-background border border-border mb-4">
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Reasons</p>
+                    <p className="text-sm text-muted-foreground">{candidate.similarity_reasons}</p>
                   </div>
                 )}
 

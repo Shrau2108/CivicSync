@@ -61,7 +61,7 @@ export function VolunteerDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h2 className="text-base font-semibold text-charcoal-800 mb-3">Active Tasks</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">Active Tasks</h2>
           {activeTasks.length === 0 ? (
             <Card><CardBody>
               <EmptyState
@@ -78,19 +78,19 @@ export function VolunteerDashboard() {
                   <Card hoverable>
                     <CardBody>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-mono text-charcoal-400">{task.task_id}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{task.task_id}</span>
                         <StatusBadge status={task.status} />
                       </div>
-                      <p className="font-medium text-charcoal-800 truncate">{task.title}</p>
+                      <p className="font-medium text-foreground truncate">{task.title}</p>
                       {task.report?.location && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-charcoal-400">
+                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                           <MapPin className="w-3 h-3" />
                           {task.report.location.latitude.toFixed(2)}, {task.report.location.longitude.toFixed(2)}
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-2">
                         <PriorityBadge level={task.priority_level} />
-                        <span className="text-xs text-charcoal-400">{formatDate(task.created_at)}</span>
+                        <span className="text-xs text-muted-foreground">{formatDate(task.created_at)}</span>
                       </div>
                     </CardBody>
                   </Card>
@@ -101,34 +101,34 @@ export function VolunteerDashboard() {
         </div>
 
         <div>
-          <h2 className="text-base font-semibold text-charcoal-800 mb-3">Your Profile</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">Your Profile</h2>
           {volunteer ? (
             <Card>
               <CardBody className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-charcoal-500">Verification Status</span>
-                  <span className={`badge border ${volunteer.is_verified ? 'bg-primary-50 text-primary-700 border-primary-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                  <span className="text-sm text-muted-foreground">Verification Status</span>
+                  <span className={`badge border ${volunteer.is_verified ? 'bg-primary/10 text-primary border-primary/20' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                     {volunteer.verification_status}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-charcoal-500">Workload</span>
-                  <span className="text-sm text-charcoal-700">{volunteer.current_workload} / {volunteer.max_workload}</span>
+                  <span className="text-sm text-muted-foreground">Workload</span>
+                  <span className="text-sm text-muted-foreground">{volunteer.current_workload} / {volunteer.max_workload}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-charcoal-500">Completed Tasks</span>
-                  <span className="text-sm text-charcoal-700">{volunteer.completed_tasks}</span>
+                  <span className="text-sm text-muted-foreground">Completed Tasks</span>
+                  <span className="text-sm text-muted-foreground">{volunteer.completed_tasks}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-charcoal-500">Service Area</span>
-                  <span className="text-sm text-charcoal-700">{volunteer.service_area || '—'}</span>
+                  <span className="text-sm text-muted-foreground">Service Area</span>
+                  <span className="text-sm text-muted-foreground">{volunteer.service_area || '—'}</span>
                 </div>
                 {volunteer.skills && volunteer.skills.length > 0 && (
                   <div>
-                    <p className="text-sm text-charcoal-500 mb-1">Skills</p>
+                    <p className="text-sm text-muted-foreground mb-1">Skills</p>
                     <div className="flex flex-wrap gap-1.5">
                       {volunteer.skills.map(s => (
-                        <span key={s.id} className="badge bg-charcoal-100 text-charcoal-700 border border-charcoal-200">{s.skill}</span>
+                        <span key={s.id} className="badge bg-muted text-muted-foreground border border-border">{s.skill}</span>
                       ))}
                     </div>
                   </div>

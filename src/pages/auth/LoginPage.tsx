@@ -30,25 +30,25 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-charcoal-50">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
             <Leaf className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-charcoal-800">CivicSync</span>
+          <span className="text-xl font-bold text-foreground">CivicSync</span>
         </Link>
 
         <div className="card p-6 sm:p-8">
-          <h1 className="text-xl font-bold text-charcoal-800 mb-1">Welcome Back</h1>
-          <p className="text-sm text-charcoal-500 mb-6">Sign in to your account to continue</p>
+          <h1 className="text-xl font-bold text-foreground mb-1">Welcome Back</h1>
+          <p className="text-sm text-muted-foreground mb-6">Sign in to your account to continue</p>
 
           <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <strong>Explore the interface</strong>
             <p className="mt-1">Preview a role without creating an account or changing Supabase data.</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {(['citizen', 'supervisor', 'volunteer', 'admin'] as const).map((option) => (
-                <button key={option} type="button" onClick={() => startDemoSession(option)} className="rounded-md border border-amber-300 bg-white px-2 py-2 text-xs capitalize text-charcoal-700 hover:border-primary-500 hover:text-primary-700">
+                <button key={option} type="button" onClick={() => startDemoSession(option)} className="rounded-md border border-amber-300 bg-card px-2 py-2 text-xs capitalize text-muted-foreground hover:border-primary-500 hover:text-primary-700">
                   {option === 'admin' ? 'Administrator' : option}
                 </button>
               ))}
@@ -56,7 +56,7 @@ export function LoginPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm animate-fade-in">
+            <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-red-200 text-red-700 text-sm animate-fade-in">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -66,7 +66,7 @@ export function LoginPage() {
             <div>
               <label className="label">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="email"
                   value={email}
@@ -82,7 +82,7 @@ export function LoginPage() {
             <div>
               <label className="label">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -95,7 +95,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal-400 hover:text-charcoal-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-charcoal-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -103,7 +103,7 @@ export function LoginPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <Link to="/reset-password" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+              <Link to="/reset-password" className="text-sm text-primary hover:text-primary-700 font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -114,9 +114,9 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-charcoal-500 mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+            <Link to="/register" className="text-primary hover:text-primary-700 font-medium">
               Register here
             </Link>
           </p>

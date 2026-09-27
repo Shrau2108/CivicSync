@@ -107,14 +107,14 @@ export function EvidenceVerificationPage() {
         description="Review before-and-after evidence submitted by volunteers"
       />
 
-      <div className="card p-4 mb-4 bg-charcoal-50 border-charcoal-200">
+      <div className="card p-4 mb-4 bg-background border-border">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-            <ShieldCheck className="w-4 h-4 text-charcoal-600" />
+          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+            <ShieldCheck className="w-4 h-4 text-muted-foreground" />
           </div>
           <div>
-            <p className="text-sm font-medium text-charcoal-700">Verification Process</p>
-            <p className="text-xs text-charcoal-500 mt-1">
+            <p className="text-sm font-medium text-muted-foreground">Verification Process</p>
+            <p className="text-xs text-muted-foreground mt-1">
               Compare before and after evidence. File integrity is checked via SHA-256 hashing.
               Hashing verifies file integrity but does not alone prove issue resolution —
               supervisor judgment is required. Tasks are not automatically marked complete.
@@ -124,7 +124,7 @@ export function EvidenceVerificationPage() {
       </div>
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search tasks..." />
       </div>
 
@@ -142,8 +142,8 @@ export function EvidenceVerificationPage() {
                 <CardBody>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div>
-                      <span className="text-xs font-mono text-charcoal-400">{task.task_id}</span>
-                      <p className="font-medium text-charcoal-800">{task.title}</p>
+                      <span className="text-xs font-mono text-muted-foreground">{task.task_id}</span>
+                      <p className="font-medium text-foreground">{task.title}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <PriorityBadge level={task.priority_level} />
@@ -153,43 +153,43 @@ export function EvidenceVerificationPage() {
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">Before</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Before</p>
                       {beforeEvidence ? (
-                        <div className="rounded-lg overflow-hidden border border-charcoal-200">
+                        <div className="rounded-lg overflow-hidden border border-border">
                           {beforeEvidence.file_url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
                             <img src={beforeEvidence.file_url} alt="Before" className="w-full h-32 object-cover" />
                           ) : (
                             <video src={beforeEvidence.file_url} className="w-full h-32 object-cover" controls />
                           )}
                           <div className="p-2">
-                            <p className="text-xs text-charcoal-500">{timeAgo(beforeEvidence.submitted_at)}</p>
-                            {beforeEvidence.file_hash && <p className="text-xs text-charcoal-400 font-mono truncate">Hash: {beforeEvidence.file_hash.substring(0, 16)}...</p>}
+                            <p className="text-xs text-muted-foreground">{timeAgo(beforeEvidence.submitted_at)}</p>
+                            {beforeEvidence.file_hash && <p className="text-xs text-muted-foreground font-mono truncate">Hash: {beforeEvidence.file_hash.substring(0, 16)}...</p>}
                           </div>
                         </div>
-                      ) : <p className="text-sm text-charcoal-400">No before evidence</p>}
+                      ) : <p className="text-sm text-muted-foreground">No before evidence</p>}
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">After</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase mb-2">After</p>
                       {afterEvidence ? (
-                        <div className="rounded-lg overflow-hidden border border-charcoal-200">
+                        <div className="rounded-lg overflow-hidden border border-border">
                           {afterEvidence.file_url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
                             <img src={afterEvidence.file_url} alt="After" className="w-full h-32 object-cover" />
                           ) : (
                             <video src={afterEvidence.file_url} className="w-full h-32 object-cover" controls />
                           )}
                           <div className="p-2">
-                            <p className="text-xs text-charcoal-500">{timeAgo(afterEvidence.submitted_at)}</p>
-                            {afterEvidence.file_hash && <p className="text-xs text-charcoal-400 font-mono truncate">Hash: {afterEvidence.file_hash.substring(0, 16)}...</p>}
+                            <p className="text-xs text-muted-foreground">{timeAgo(afterEvidence.submitted_at)}</p>
+                            {afterEvidence.file_hash && <p className="text-xs text-muted-foreground font-mono truncate">Hash: {afterEvidence.file_hash.substring(0, 16)}...</p>}
                           </div>
                         </div>
-                      ) : <p className="text-sm text-charcoal-400">No after evidence</p>}
+                      ) : <p className="text-sm text-muted-foreground">No after evidence</p>}
                     </div>
                   </div>
 
                   {beforeEvidence?.file_hash && afterEvidence?.file_hash && (
                     <div className={`p-2 rounded-lg text-xs mb-3 ${
                       beforeEvidence.file_hash !== afterEvidence.file_hash
-                        ? 'bg-primary-50 text-primary-700 border border-primary-200'
+                        ? 'bg-primary/10 text-primary border border-primary/20'
                         : 'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}>
                       {beforeEvidence.file_hash !== afterEvidence.file_hash
@@ -231,7 +231,7 @@ export function EvidenceVerificationPage() {
         danger={decisionModal?.decision === 'rejected'}
       >
         <div className="p-5">
-          <label className="label">Comments <span className="text-charcoal-400 font-normal">(optional)</span></label>
+          <label className="label">Comments <span className="text-muted-foreground font-normal">(optional)</span></label>
           <textarea value={comments} onChange={(e) => setComments(e.target.value)} className="input min-h-[80px] resize-y" placeholder="Add your review comments..." />
         </div>
       </ConfirmDialog>

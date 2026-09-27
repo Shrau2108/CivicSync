@@ -46,7 +46,7 @@ export function AvailableTasksPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             value={search}
@@ -79,12 +79,12 @@ export function AvailableTasksPage() {
               <Card hoverable className="h-full">
                 <CardBody>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-mono text-charcoal-400">{task.task_id}</span>
+                    <span className="text-xs font-mono text-muted-foreground">{task.task_id}</span>
                     <PriorityBadge level={task.priority_level} />
                   </div>
-                  <p className="font-medium text-charcoal-800 mb-2">{task.title}</p>
-                  {task.description && <p className="text-sm text-charcoal-500 line-clamp-2 mb-3">{task.description}</p>}
-                  <div className="flex items-center gap-3 flex-wrap text-xs text-charcoal-400">
+                  <p className="font-medium text-foreground mb-2">{task.title}</p>
+                  {task.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{task.description}</p>}
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
                     <StatusBadge status={task.status} />
                     {task.estimated_time_minutes && (
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {task.estimated_time_minutes}m</span>
@@ -98,7 +98,7 @@ export function AvailableTasksPage() {
                   {task.required_skills && task.required_skills.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       {task.required_skills.map((skill, i) => (
-                        <span key={i} className="badge bg-primary-50 text-primary-700 border border-primary-200">{skill}</span>
+                        <span key={i} className="badge bg-primary/10 text-primary border border-primary/20">{skill}</span>
                       ))}
                     </div>
                   )}

@@ -5,50 +5,111 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 210 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 210 100% 50%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    
+    --card: 224 71% 7%;
+    --card-foreground: 213 31% 91%;
+    
+    --popover: 224 71% 7%;
+    --popover-foreground: 215 20.2% 65.1%;
+    
+    --primary: 210 100% 50%;
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+    
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+    --ring: 210 100% 50%;
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
+  
   body {
-    @apply bg-charcoal-50 text-charcoal-800 font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/30;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-semibold tracking-tight text-foreground;
     line-height: 1.2;
-  }
-  ::selection {
-    @apply bg-primary-200 text-primary-900;
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary shadow-sm;
   }
   .btn-secondary {
-    @apply btn bg-white text-charcoal-700 border border-charcoal-200 hover:bg-charcoal-50 focus:ring-charcoal-300;
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary shadow-sm;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm;
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive shadow-sm;
   }
   .btn-ghost {
-    @apply btn text-charcoal-600 hover:bg-charcoal-100 focus:ring-charcoal-300;
+    @apply btn text-muted-foreground hover:text-foreground hover:bg-accent focus:ring-accent;
   }
   .card {
-    @apply bg-white rounded-xl border border-charcoal-200 shadow-card;
+    @apply bg-card rounded-xl border border-border shadow-sm;
   }
   .input {
-    @apply w-full rounded-lg border border-charcoal-200 bg-white px-3.5 py-2.5 text-sm text-charcoal-800 placeholder-charcoal-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none transition-all;
+    @apply w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all;
   }
   .label {
-    @apply block text-sm font-medium text-charcoal-700 mb-1.5;
+    @apply block text-sm font-medium text-muted-foreground mb-1.5;
   }
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border border-border bg-background text-foreground;
   }
 }
 
@@ -61,10 +122,10 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-charcoal-300 rounded-full;
+    @apply bg-muted-foreground/30 rounded-full;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-charcoal-400;
+    @apply bg-muted-foreground/50;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;

@@ -65,7 +65,7 @@ export function MapDashboardPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search reports..." />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input sm:w-40">
@@ -116,16 +116,16 @@ export function MapDashboardPage() {
                     <StatusBadge status={report.status} />
                     <PriorityBadge level={report.priority_level} />
                   </div>
-                  <p className="font-medium text-charcoal-800 truncate">{report.title}</p>
-                  {report.category && <p className="text-xs text-charcoal-500 mt-1">{report.category.name}</p>}
+                  <p className="font-medium text-foreground truncate">{report.title}</p>
+                  {report.category && <p className="text-xs text-muted-foreground mt-1">{report.category.name}</p>}
                   {report.location && (
-                    <div className="flex items-center gap-1 mt-2 text-xs text-charcoal-400">
+                    <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                       <MapPin className="w-3 h-3" />
                       {report.location.latitude.toFixed(4)}, {report.location.longitude.toFixed(4)}
                       {report.location.address && <span className="truncate">— {report.location.address}</span>}
                     </div>
                   )}
-                  <p className="text-xs text-charcoal-400 mt-1">{formatDate(report.created_at)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{formatDate(report.created_at)}</p>
                 </CardBody>
               </Card>
             </Link>
@@ -148,8 +148,8 @@ export function MapDashboardPage() {
                     'bg-primary-500'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-charcoal-800 truncate">{report.title}</p>
-                    <p className="text-xs text-charcoal-400 font-mono">
+                    <p className="text-sm font-medium text-foreground truncate">{report.title}</p>
+                    <p className="text-xs text-muted-foreground font-mono">
                       {report.location?.latitude.toFixed(4)}, {report.location?.longitude.toFixed(4)}
                     </p>
                   </div>
@@ -163,12 +163,12 @@ export function MapDashboardPage() {
 
       {/* Legend */}
       <div className="card p-4 mt-4">
-        <p className="text-sm font-medium text-charcoal-700 mb-2">Priority Legend</p>
+        <p className="text-sm font-medium text-muted-foreground mb-2">Priority Legend</p>
         <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-xs text-charcoal-600">Critical</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-500" /><span className="text-xs text-charcoal-600">High</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-xs text-charcoal-600">Medium</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-primary-500" /><span className="text-xs text-charcoal-600">Low</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-xs text-muted-foreground">Critical</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-500" /><span className="text-xs text-muted-foreground">High</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-xs text-muted-foreground">Medium</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-primary-500" /><span className="text-xs text-muted-foreground">Low</span></div>
         </div>
       </div>
     </div>

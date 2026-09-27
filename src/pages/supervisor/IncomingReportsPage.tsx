@@ -125,7 +125,7 @@ export function IncomingReportsPage() {
       <PageHeader title="Incoming Reports" description="Review and verify newly submitted reports" />
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search reports..." />
       </div>
 
@@ -141,16 +141,16 @@ export function IncomingReportsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-charcoal-400">{report.report_id}</span>
+                      <span className="text-xs font-mono text-muted-foreground">{report.report_id}</span>
                       <StatusBadge status={report.status} />
                       <PriorityBadge level={report.priority_level} />
                     </div>
-                    <p className="font-medium text-charcoal-800">{report.title}</p>
-                    <p className="text-sm text-charcoal-500 mt-1 line-clamp-2">{report.description}</p>
+                    <p className="font-medium text-foreground">{report.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{report.description}</p>
                     <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      {report.category && <span className="text-xs text-charcoal-500">{report.category.name}</span>}
-                      <span className="text-xs text-charcoal-400">{formatDate(report.created_at)}</span>
-                      {report.location && <span className="text-xs text-charcoal-400">{report.location.latitude.toFixed(2)}, {report.location.longitude.toFixed(2)}</span>}
+                      {report.category && <span className="text-xs text-muted-foreground">{report.category.name}</span>}
+                      <span className="text-xs text-muted-foreground">{formatDate(report.created_at)}</span>
+                      {report.location && <span className="text-xs text-muted-foreground">{report.location.latitude.toFixed(2)}, {report.location.longitude.toFixed(2)}</span>}
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">

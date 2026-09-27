@@ -53,14 +53,14 @@ export function VolunteerMatchingPage() {
         description="Find the best volunteers for each task using skill, availability, and proximity matching"
       />
 
-      <div className="card p-4 mb-4 bg-primary-50 border-primary-200">
+      <div className="card p-4 mb-4 bg-primary/10 border-primary/20">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
-            <Zap className="w-4 h-4 text-primary-600" />
+          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-4 h-4 text-primary" />
           </div>
           <div>
             <p className="text-sm font-medium text-primary-800">Explainable Recommendation Engine</p>
-            <p className="text-xs text-primary-700 mt-1">
+            <p className="text-xs text-primary mt-1">
               Recommendations are based on rule-based matching: skill overlap (40%), workload capacity (25%),
               availability (15%), and geographic proximity (20%). Each recommendation includes
               human-readable reasons. ML-based recommendation is a future scope feature.
@@ -87,12 +87,12 @@ export function VolunteerMatchingPage() {
           {selectedTask && (
             <Card className="mb-4">
               <CardBody>
-                <p className="font-medium text-charcoal-800">{selectedTask.title}</p>
-                {selectedTask.description && <p className="text-sm text-charcoal-500 mt-1">{selectedTask.description}</p>}
+                <p className="font-medium text-foreground">{selectedTask.title}</p>
+                {selectedTask.description && <p className="text-sm text-muted-foreground mt-1">{selectedTask.description}</p>}
                 {selectedTask.required_skills && selectedTask.required_skills.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {selectedTask.required_skills.map((s, i) => (
-                      <span key={i} className="badge bg-primary-50 text-primary-700 border border-primary-200">{s}</span>
+                      <span key={i} className="badge bg-primary/10 text-primary border border-primary/20">{s}</span>
                     ))}
                   </div>
                 )}
@@ -111,18 +111,18 @@ export function VolunteerMatchingPage() {
                   <CardBody>
                     <div className="flex items-start gap-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                        i === 0 ? 'bg-primary-100 text-primary-700' : 'bg-charcoal-100 text-charcoal-600'
+                        i === 0 ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                       }`}>
                         {i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-charcoal-800">{match.volunteer.profile?.full_name || 'Unknown'}</p>
+                          <p className="font-medium text-foreground">{match.volunteer.profile?.full_name || 'Unknown'}</p>
                           {match.volunteer.is_verified && (
-                            <span className="badge bg-primary-50 text-primary-700 border border-primary-200">Verified</span>
+                            <span className="badge bg-primary/10 text-primary border border-primary/20">Verified</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-charcoal-500">
+                        <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" /> {match.volunteer.current_workload}/{match.volunteer.max_workload} tasks
                           </span>
@@ -141,15 +141,15 @@ export function VolunteerMatchingPage() {
                         {match.volunteer.skills && match.volunteer.skills.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {match.volunteer.skills.map(s => (
-                              <span key={s.id} className="badge bg-charcoal-100 text-charcoal-700 border border-charcoal-200">{s.skill}</span>
+                              <span key={s.id} className="badge bg-muted text-muted-foreground border border-border">{s.skill}</span>
                             ))}
                           </div>
                         )}
                         <div className="mt-3 p-2 rounded-lg bg-primary-50/50 border border-primary-100">
-                          <p className="text-xs font-medium text-primary-700 mb-1">Recommended because:</p>
+                          <p className="text-xs font-medium text-primary mb-1">Recommended because:</p>
                           <ul className="space-y-0.5">
                             {match.reasons.map((reason, ri) => (
-                              <li key={ri} className="text-xs text-primary-600 flex items-start gap-1">
+                              <li key={ri} className="text-xs text-primary flex items-start gap-1">
                                 <span className="text-primary-400">•</span> {reason}
                               </li>
                             ))}

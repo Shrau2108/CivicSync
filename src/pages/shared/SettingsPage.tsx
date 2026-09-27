@@ -66,14 +66,14 @@ export function SettingsPage() {
         action={<button onClick={handleSave} disabled={saving} className="btn-primary"><Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Settings'}</button>}
       />
 
-      {saveSuccess && <div className="p-3 mb-4 rounded-lg bg-primary-50 border border-primary-200 text-primary-700 text-sm animate-fade-in">Settings saved successfully</div>}
+      {saveSuccess && <div className="p-3 mb-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm animate-fade-in">Settings saved successfully</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Priority Weights */}
         <Card>
           <CardHeader><CardTitle>Priority Weights</CardTitle></CardHeader>
           <CardBody className="space-y-4">
-            <p className="text-sm text-charcoal-500">Configure the weight of each factor in priority score calculation. Weights should sum to 100.</p>
+            <p className="text-sm text-muted-foreground">Configure the weight of each factor in priority score calculation. Weights should sum to 100.</p>
             {Object.entries(priorityWeights).map(([key, value]) => (
               <div key={key}>
                 <label className="label capitalize">{key.replace(/_/g, ' ')}</label>
@@ -95,7 +95,7 @@ export function SettingsPage() {
                 </div>
               </div>
             ))}
-            <p className="text-xs text-charcoal-400">Total: {Object.values(priorityWeights).reduce((a, b) => a + b, 0)} (should be 100)</p>
+            <p className="text-xs text-muted-foreground">Total: {Object.values(priorityWeights).reduce((a, b) => a + b, 0)} (should be 100)</p>
           </CardBody>
         </Card>
 
@@ -106,14 +106,14 @@ export function SettingsPage() {
             {Object.entries(notifChannels).map(([key, value]) => (
               <div key={key} className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm font-medium text-charcoal-700 capitalize">{key.replace(/_/g, ' ')}</span>
-                  {key !== 'in_app' && !value && <span className="text-xs text-charcoal-400 ml-2">(requires provider setup)</span>}
+                  <span className="text-sm font-medium text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                  {key !== 'in_app' && !value && <span className="text-xs text-muted-foreground ml-2">(requires provider setup)</span>}
                 </div>
                 <button
                   onClick={() => setNotifChannels(prev => ({ ...prev, [key]: !value }))}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-primary-600' : 'bg-charcoal-200'}`}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-primary' : 'bg-muted'}`}
                 >
-                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-card transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             ))}
@@ -125,17 +125,17 @@ export function SettingsPage() {
           <CardHeader><CardTitle>AI Integration</CardTitle></CardHeader>
           <CardBody>
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-                <Brain className="w-5 h-5 text-charcoal-500" />
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <Brain className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-charcoal-700">AI Categorization & Classification</p>
-                <p className="text-xs text-charcoal-500 mt-1">
+                <p className="text-sm font-medium text-muted-foreground">AI Categorization & Classification</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   {aiSetting?.value && (aiSetting.value as Record<string, unknown>).active
                     ? 'AI integration is active.'
                     : 'AI integration is not configured. Manual categorization is available.'}
                 </p>
-                <p className="text-xs text-charcoal-400 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   To enable: configure an AI provider API key in edge function secrets and set the integration status.
                 </p>
               </div>
@@ -148,17 +148,17 @@ export function SettingsPage() {
           <CardHeader><CardTitle>Map Provider</CardTitle></CardHeader>
           <CardBody>
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-                <Map className="w-5 h-5 text-charcoal-500" />
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <Map className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-charcoal-700">Map Configuration</p>
-                <p className="text-xs text-charcoal-500 mt-1">
+                <p className="text-sm font-medium text-muted-foreground">Map Configuration</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   {mapSetting?.value && (mapSetting.value as Record<string, unknown>).api_key_configured
                     ? 'Map provider is configured.'
                     : 'Map provider API key is not configured. Showing coordinates in list format.'}
                 </p>
-                <p className="text-xs text-charcoal-400 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   To enable live maps: configure a Google Maps or Mapbox API key.
                 </p>
               </div>
@@ -172,9 +172,9 @@ export function SettingsPage() {
           <CardBody>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               {categories.map(cat => (
-                <div key={cat.id} className="p-3 rounded-lg bg-charcoal-50 border border-charcoal-200 text-center">
-                  <p className="text-sm font-medium text-charcoal-700">{cat.name}</p>
-                  <span className={`text-xs ${cat.is_active ? 'text-primary-600' : 'text-charcoal-400'}`}>
+                <div key={cat.id} className="p-3 rounded-lg bg-background border border-border text-center">
+                  <p className="text-sm font-medium text-muted-foreground">{cat.name}</p>
+                  <span className={`text-xs ${cat.is_active ? 'text-primary' : 'text-muted-foreground'}`}>
                     {cat.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>

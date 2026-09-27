@@ -72,7 +72,7 @@ export function MyReportsPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             value={search}
@@ -113,20 +113,20 @@ export function MyReportsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-mono text-charcoal-400">{report.report_id}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{report.report_id}</span>
                         <StatusBadge status={report.status} />
                       </div>
-                      <p className="font-medium text-charcoal-800 truncate">{report.title}</p>
-                      <p className="text-sm text-charcoal-500 mt-1 line-clamp-2">{report.description}</p>
+                      <p className="font-medium text-foreground truncate">{report.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{report.description}</p>
                       <div className="flex items-center gap-3 mt-2 flex-wrap">
-                        {report.category && <span className="text-xs text-charcoal-500">{report.category.name}</span>}
-                        <span className="text-xs text-charcoal-400">{formatDate(report.created_at)}</span>
+                        {report.category && <span className="text-xs text-muted-foreground">{report.category.name}</span>}
+                        <span className="text-xs text-muted-foreground">{formatDate(report.created_at)}</span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <PriorityBadge level={report.priority_level} />
                       {report.location && (
-                        <span className="text-xs text-charcoal-400">{report.location.latitude.toFixed(2)}, {report.location.longitude.toFixed(2)}</span>
+                        <span className="text-xs text-muted-foreground">{report.location.latitude.toFixed(2)}, {report.location.longitude.toFixed(2)}</span>
                       )}
                     </div>
                   </div>

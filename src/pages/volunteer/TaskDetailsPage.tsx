@@ -149,7 +149,7 @@ export function TaskDetailsPage() {
       <PageHeader title={task.title} description={`Task ID: ${task.task_id}`} />
 
       {acceptError && (
-        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm animate-fade-in">
+        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-red-200 text-red-700 text-sm animate-fade-in">
           <AlertCircle className="w-4 h-4" /> {acceptError}
         </div>
       )}
@@ -159,22 +159,22 @@ export function TaskDetailsPage() {
           <Card>
             <CardHeader><CardTitle>Task Details</CardTitle></CardHeader>
             <CardBody className="space-y-3">
-              {task.description && <p className="text-sm text-charcoal-700">{task.description}</p>}
+              {task.description && <p className="text-sm text-muted-foreground">{task.description}</p>}
               <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="flex items-center gap-2 text-sm text-charcoal-600">
-                  <Clock className="w-4 h-4 text-charcoal-400" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
                   {task.estimated_time_minutes ? `${task.estimated_time_minutes} min` : 'No estimate'}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-charcoal-600">
-                  <Users className="w-4 h-4 text-charcoal-400" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="w-4 h-4 text-muted-foreground" />
                   {task.affected_people} affected
                 </div>
-                <div className="flex items-center gap-2 text-sm text-charcoal-600">
-                  <Calendar className="w-4 h-4 text-charcoal-400" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
                   {formatDateTime(task.created_at)}
                 </div>
                 {task.deadline && (
-                  <div className="flex items-center gap-2 text-sm text-charcoal-600">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <AlertCircle className="w-4 h-4 text-amber-500" />
                     Due: {formatDateTime(task.deadline)}
                   </div>
@@ -182,18 +182,18 @@ export function TaskDetailsPage() {
               </div>
               {task.required_skills && task.required_skills.length > 0 && (
                 <div className="pt-2">
-                  <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">Required Skills</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Required Skills</p>
                   <div className="flex flex-wrap gap-1.5">
                     {task.required_skills.map((s, i) => (
-                      <span key={i} className="badge bg-primary-50 text-primary-700 border border-primary-200">{s}</span>
+                      <span key={i} className="badge bg-primary/10 text-primary border border-primary/20">{s}</span>
                     ))}
                   </div>
                 </div>
               )}
               {task.notes && (
-                <div className="pt-2 border-t border-charcoal-100">
-                  <p className="text-xs font-medium text-charcoal-400 uppercase mb-1">Notes</p>
-                  <p className="text-sm text-charcoal-600">{task.notes}</p>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Notes</p>
+                  <p className="text-sm text-muted-foreground">{task.notes}</p>
                 </div>
               )}
             </CardBody>
@@ -222,18 +222,18 @@ export function TaskDetailsPage() {
                 </div>
 
                 <label className="block">
-                  <div className="border-2 border-dashed border-charcoal-200 rounded-lg p-6 text-center cursor-pointer hover:border-primary-400 transition-colors">
-                    <Upload className="w-6 h-6 text-charcoal-400 mx-auto mb-2" />
-                    <p className="text-sm text-charcoal-600">
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary-400 transition-colors">
+                    <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
                       {evidenceFile ? evidenceFile.name : 'Click to select a file'}
                     </p>
-                    <p className="text-xs text-charcoal-400 mt-1">JPEG, PNG, WebP, MP4 up to 10MB</p>
+                    <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, MP4 up to 10MB</p>
                   </div>
                   <input type="file" accept={ACCEPTED_FILE_TYPES.join(',')} onChange={handleFileSelect} className="hidden" />
                 </label>
 
                 <div>
-                  <label className="label">Notes <span className="text-charcoal-400 font-normal">(optional)</span></label>
+                  <label className="label">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
                   <textarea
                     value={evidenceNotes}
                     onChange={(e) => setEvidenceNotes(e.target.value)}
@@ -243,7 +243,7 @@ export function TaskDetailsPage() {
                 </div>
 
                 {evidenceError && (
-                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{evidenceError}</div>
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-red-200 text-red-700 text-sm">{evidenceError}</div>
                 )}
 
                 <button
@@ -266,20 +266,20 @@ export function TaskDetailsPage() {
               <CardBody>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">Before</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Before</p>
                     <div className="space-y-2">
                       {beforeEvidence.length === 0 ? (
-                        <p className="text-sm text-charcoal-400">No before evidence</p>
+                        <p className="text-sm text-muted-foreground">No before evidence</p>
                       ) : beforeEvidence.map((e) => (
                         <EvidenceCard key={e.id} evidence={e} />
                       ))}
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-charcoal-400 uppercase mb-2">After</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">After</p>
                     <div className="space-y-2">
                       {afterEvidence.length === 0 ? (
-                        <p className="text-sm text-charcoal-400">No after evidence</p>
+                        <p className="text-sm text-muted-foreground">No after evidence</p>
                       ) : afterEvidence.map((e) => (
                         <EvidenceCard key={e.id} evidence={e} />
                       ))}
@@ -298,15 +298,15 @@ export function TaskDetailsPage() {
                 <div className="space-y-3">
                   {task.history.map((h) => (
                     <div key={h.id} className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-                        <History className="w-3.5 h-3.5 text-charcoal-500" />
+                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <History className="w-3.5 h-3.5 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm text-charcoal-700">
+                        <p className="text-sm text-muted-foreground">
                           {h.from_status ? `${h.from_status} → ${h.to_status}` : `→ ${h.to_status}`}
                         </p>
-                        {h.reason && <p className="text-xs text-charcoal-500">{h.reason}</p>}
-                        <p className="text-xs text-charcoal-400">{timeAgo(h.created_at)}</p>
+                        {h.reason && <p className="text-xs text-muted-foreground">{h.reason}</p>}
+                        <p className="text-xs text-muted-foreground">{timeAgo(h.created_at)}</p>
                       </div>
                     </div>
                   ))}
@@ -322,11 +322,11 @@ export function TaskDetailsPage() {
             <CardHeader><CardTitle>Status</CardTitle></CardHeader>
             <CardBody className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-charcoal-500">Task Status</span>
+                <span className="text-sm text-muted-foreground">Task Status</span>
                 <StatusBadge status={task.status} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-charcoal-500">Priority</span>
+                <span className="text-sm text-muted-foreground">Priority</span>
                 <PriorityBadge level={task.priority_level} />
               </div>
               {task.report && (
@@ -362,10 +362,10 @@ export function TaskDetailsPage() {
               <CardHeader><CardTitle>Location</CardTitle></CardHeader>
               <CardBody>
                 <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-charcoal-400 mt-0.5" />
+                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
                   <div>
-                    {task.report.location.address && <p className="text-sm text-charcoal-700">{task.report.location.address}</p>}
-                    <p className="text-sm text-charcoal-500 font-mono">
+                    {task.report.location.address && <p className="text-sm text-muted-foreground">{task.report.location.address}</p>}
+                    <p className="text-sm text-muted-foreground font-mono">
                       {task.report.location.latitude.toFixed(4)}, {task.report.location.longitude.toFixed(4)}
                     </p>
                   </div>
@@ -391,16 +391,16 @@ export function TaskDetailsPage() {
 
 function EvidenceCard({ evidence }: { evidence: Evidence }) {
   return (
-    <div className="rounded-lg overflow-hidden border border-charcoal-200">
+    <div className="rounded-lg overflow-hidden border border-border">
       {evidence.file_url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
         <img src={evidence.file_url} alt={evidence.file_name || 'Evidence'} className="w-full h-24 object-cover" />
       ) : (
         <video src={evidence.file_url} className="w-full h-24 object-cover" controls />
       )}
       <div className="p-2">
-        <p className="text-xs text-charcoal-500 truncate">{evidence.file_name}</p>
-        <p className="text-xs text-charcoal-400">{timeAgo(evidence.submitted_at)}</p>
-        {evidence.notes && <p className="text-xs text-charcoal-600 mt-1">{evidence.notes}</p>}
+        <p className="text-xs text-muted-foreground truncate">{evidence.file_name}</p>
+        <p className="text-xs text-muted-foreground">{timeAgo(evidence.submitted_at)}</p>
+        {evidence.notes && <p className="text-xs text-muted-foreground mt-1">{evidence.notes}</p>}
       </div>
     </div>
   );

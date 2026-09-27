@@ -75,13 +75,13 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div>
-          <h2 className="text-base font-semibold text-charcoal-800 mb-3">Role Distribution</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">Role Distribution</h2>
           <Card>
             <CardBody className="space-y-3">
               {Object.entries(roleDistribution).map(([role, count]) => (
                 <div key={role} className="flex items-center justify-between">
-                  <span className="text-sm text-charcoal-600 capitalize">{role}</span>
-                  <span className="text-sm font-medium text-charcoal-800">{count}</span>
+                  <span className="text-sm text-muted-foreground capitalize">{role}</span>
+                  <span className="text-sm font-medium text-foreground">{count}</span>
                 </div>
               ))}
             </CardBody>
@@ -90,25 +90,25 @@ export function AdminDashboard() {
 
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-charcoal-800">Recent Activity</h2>
-            <Link to="/app/audit" className="text-sm text-primary-600 hover:text-primary-700">View All</Link>
+            <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
+            <Link to="/app/audit" className="text-sm text-primary hover:text-primary-700">View All</Link>
           </div>
           {auditLogs.length === 0 ? (
-            <Card><CardBody><p className="text-sm text-charcoal-400 text-center py-4">No recent activity</p></CardBody></Card>
+            <Card><CardBody><p className="text-sm text-muted-foreground text-center py-4">No recent activity</p></CardBody></Card>
           ) : (
             <Card>
               <div className="divide-y divide-charcoal-100">
                 {auditLogs.map((log) => (
                   <div key={log.id} className="p-3 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-                      <Activity className="w-4 h-4 text-charcoal-500" />
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <Activity className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-charcoal-700">
+                      <p className="text-sm text-muted-foreground">
                         <span className="font-medium">{log.actor?.full_name || 'System'}</span>
-                        {' '}<span className="text-charcoal-500">{log.action.replace(/_/g, ' ')}</span>
+                        {' '}<span className="text-muted-foreground">{log.action.replace(/_/g, ' ')}</span>
                       </p>
-                      <p className="text-xs text-charcoal-400">{timeAgo(log.created_at)}</p>
+                      <p className="text-xs text-muted-foreground">{timeAgo(log.created_at)}</p>
                     </div>
                   </div>
                 ))}

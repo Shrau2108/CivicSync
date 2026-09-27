@@ -33,7 +33,7 @@ export function RegisterPage() {
     if (/[0-9]/.test(pwd)) score++;
     if (/[^A-Za-z0-9]/.test(pwd)) score++;
     const labels = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
-    const colors = ['bg-red-500', 'bg-red-400', 'bg-amber-400', 'bg-primary-400', 'bg-primary-600'];
+    const colors = ['bg-red-500', 'bg-red-400', 'bg-amber-400', 'bg-primary-400', 'bg-primary'];
     return { score, label: labels[score], color: colors[score] };
   };
 
@@ -71,21 +71,21 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-charcoal-50">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
       <div className="w-full max-w-lg">
         <Link to="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
             <Leaf className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-charcoal-800">CivicSync</span>
+          <span className="text-xl font-bold text-foreground">CivicSync</span>
         </Link>
 
         <div className="card p-6 sm:p-8">
-          <h1 className="text-xl font-bold text-charcoal-800 mb-1">Create Your Account</h1>
-          <p className="text-sm text-charcoal-500 mb-6">Join CivicSync and help your community</p>
+          <h1 className="text-xl font-bold text-foreground mb-1">Create Your Account</h1>
+          <p className="text-sm text-muted-foreground mb-6">Join CivicSync and help your community</p>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm animate-fade-in">
+            <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-red-200 text-red-700 text-sm animate-fade-in">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -102,7 +102,7 @@ export function RegisterPage() {
             <div>
               <label htmlFor="full-name" className="label">Full Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   id="full-name"
                   name="full_name"
@@ -120,7 +120,7 @@ export function RegisterPage() {
             <div>
               <label htmlFor="email" className="label">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   id="email"
                   name="email"
@@ -136,9 +136,9 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="phone" className="label">Phone Number <span className="text-charcoal-400 font-normal">(optional)</span></label>
+              <label htmlFor="phone" className="label">Phone Number <span className="text-muted-foreground font-normal">(optional)</span></label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   id="phone"
                   name="phone"
@@ -155,7 +155,7 @@ export function RegisterPage() {
             <div>
               <label htmlFor="password" className="label">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   id="password"
                   name="password"
@@ -170,7 +170,7 @@ export function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal-400 hover:text-charcoal-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-charcoal-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -181,11 +181,11 @@ export function RegisterPage() {
                     {[0, 1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className={`h-1 flex-1 rounded-full ${i < strength.score ? strength.color : 'bg-charcoal-200'}`}
+                        className={`h-1 flex-1 rounded-full ${i < strength.score ? strength.color : 'bg-muted'}`}
                       />
                     ))}
                   </div>
-                  <p className="text-xs text-charcoal-500 mt-1">{strength.label}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{strength.label}</p>
                 </div>
               )}
             </div>
@@ -193,7 +193,7 @@ export function RegisterPage() {
             <div>
               <label htmlFor="confirm-password" className="label">Confirm Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   id="confirm-password"
                   name="confirm_password"
@@ -207,7 +207,7 @@ export function RegisterPage() {
                 />
               </div>
               {confirmPassword && password === confirmPassword && (
-                <p className="text-xs text-primary-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-primary mt-1 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Passwords match
                 </p>
               )}
@@ -225,22 +225,22 @@ export function RegisterPage() {
                       onClick={() => setRole(r.value)}
                       className={`flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all ${
                         role === r.value
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-charcoal-200 hover:border-charcoal-300'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-charcoal-300'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 mt-0.5 ${role === r.value ? 'text-primary-600' : 'text-charcoal-400'}`} />
+                      <Icon className={`w-5 h-5 mt-0.5 ${role === r.value ? 'text-primary' : 'text-muted-foreground'}`} />
                       <div>
-                        <p className={`text-sm font-medium ${role === r.value ? 'text-primary-700' : 'text-charcoal-700'}`}>
+                        <p className={`text-sm font-medium ${role === r.value ? 'text-primary' : 'text-muted-foreground'}`}>
                           {r.label}
                         </p>
-                        <p className="text-xs text-charcoal-500">{r.desc}</p>
+                        <p className="text-xs text-muted-foreground">{r.desc}</p>
                       </div>
                     </button>
                   );
                 })}
               </div>
-              <p className="text-xs text-charcoal-400 mt-2 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" />
                 Supervisor and Administrator roles are assigned by an existing administrator after registration.
               </p>
@@ -252,9 +252,9 @@ export function RegisterPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-charcoal-500 mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+            <Link to="/login" className="text-primary hover:text-primary-700 font-medium">
               Sign in
             </Link>
           </p>

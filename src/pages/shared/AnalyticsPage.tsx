@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, FileText, CheckCircle2, Clock, Star } from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, Legend
+} from 'recharts';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatCard, EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { fetchReports, fetchTasks, fetchVolunteers } from '@/services/api';
 import type { Report, Task, Volunteer } from '@/types';
+
+const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
 
 export function AnalyticsPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -44,130 +50,109 @@ export function AnalyticsPage() {
     );
   }
 
-  const byCategory: Record<string, number> = {};
+  // Process data for charts
+  const categoryCount: Record<string, number> = {};
   reports.forEach(r => {
-    const cat = r.category?.name || 'Uncategorized';
-    byCategory[cat] = (byCategory[cat] || 0) + 1;
+    const cat = r.category?.name || 'Other';
+    categoryCount[cat] = (categoryCount[cat] || 0) + 1;
   });
+  const categoryData = Object.entries(categoryCount).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-  const byPriority: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+  const statusCount: Record<string, number> = {};
   reports.forEach(r => {
-    if (r.priority_level) byPriority[r.priority_level]++;
+    const s = r.status.replace(/_/g, ' ');
+    statusCount[s] = (statusCount[s] || 0) + 1;
   });
+  const statusData = Object.entries(statusCount).map(([name, value]) => ({ name, value }));
 
-  const byStatus: Record<string, number> = {};
+  // Process timeline data (reports by date)
+  const dateCount: Record<string, number> = {};
   reports.forEach(r => {
-    byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+    const date = new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    dateCount[date] = (dateCount[date] || 0) + 1;
   });
+  const timelineData = Object.entries(dateCount).slice(0, 7).reverse().map(([date, count]) => ({ date, count }));
 
   const resolved = reports.filter(r => r.status === 'resolved').length;
-  const unresolved = reports.length - resolved;
   const completionRate = reports.length > 0 ? Math.round((resolved / reports.length) * 100) : 0;
-
-  const maxCategory = Math.max(...Object.values(byCategory), 1);
-  const maxPriority = Math.max(...Object.values(byPriority), 1);
 
   return (
     <div>
-      <PageHeader title="Analytics" description="Insights and trends across the platform" />
+      <PageHeader title="Analytics Dashboard" description="Comprehensive platform insights and trends" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Reports" value={reports.length} icon={<FileText className="w-5 h-5" />} color="primary" />
-        <StatCard label="Resolved" value={resolved} icon={<CheckCircle2 className="w-5 h-5" />} color="teal" />
-        <StatCard label="Completion Rate" value={`${completionRate}%`} icon={<TrendingUp className="w-5 h-5" />} color="navy" />
-        <StatCard label="Active Volunteers" value={volunteers.filter(v => v.is_verified).length} icon={<Star className="w-5 h-5" />} color="amber" />
+        <StatCard label="Total Reports" value={reports.length} icon={<FileText className="w-5 h-5 text-primary" />} />
+        <StatCard label="Resolved Issues" value={resolved} icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />} />
+        <StatCard label="Resolution Rate" value={`${completionRate}%`} icon={<TrendingUp className="w-5 h-5 text-purple-500" />} />
+        <StatCard label="Active Volunteers" value={volunteers.filter(v => v.is_verified).length} icon={<Star className="w-5 h-5 text-amber-500" />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* By Category */}
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader><CardTitle>Report Volume (Last 7 Days)</CardTitle></CardHeader>
+          <CardBody className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={timelineData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                  itemStyle={{ color: '#f8fafc' }}
+                />
+                <Line type="monotone" dataKey="count" name="Reports" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardBody>
+        </Card>
+
         <Card>
           <CardHeader><CardTitle>Reports by Category</CardTitle></CardHeader>
-          <CardBody>
-            <div className="space-y-3">
-              {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
-                <div key={cat}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-charcoal-600">{cat}</span>
-                    <span className="text-sm font-medium text-charcoal-800">{count}</span>
-                  </div>
-                  <div className="w-full bg-charcoal-100 rounded-full h-2">
-                    <div className="bg-primary-600 h-2 rounded-full transition-all" style={{ width: `${(count / maxCategory) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+          <CardBody className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={categoryData} layout="vertical" margin={{ left: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                <XAxis type="number" stroke="#94a3b8" fontSize={12} hide />
+                <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                <Tooltip 
+                  cursor={{ fill: '#1e293b' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                />
+                <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]}>
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </CardBody>
         </Card>
 
-        {/* By Priority */}
         <Card>
-          <CardHeader><CardTitle>Reports by Priority</CardTitle></CardHeader>
-          <CardBody>
-            <div className="space-y-3">
-              {Object.entries(byPriority).map(([prio, count]) => (
-                <div key={prio}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-charcoal-600 capitalize">{prio}</span>
-                    <span className="text-sm font-medium text-charcoal-800">{count}</span>
-                  </div>
-                  <div className="w-full bg-charcoal-100 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all ${
-                      prio === 'critical' ? 'bg-red-500' :
-                      prio === 'high' ? 'bg-orange-500' :
-                      prio === 'medium' ? 'bg-amber-500' :
-                      'bg-primary-500'
-                    }`} style={{ width: `${(count / maxPriority) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* By Status */}
-        <Card>
-          <CardHeader><CardTitle>Reports by Status</CardTitle></CardHeader>
-          <CardBody>
-            <div className="space-y-2">
-              {Object.entries(byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
-                <div key={status} className="flex items-center justify-between py-1.5 border-b border-charcoal-100 last:border-0">
-                  <span className="text-sm text-charcoal-600 capitalize">{status.replace(/_/g, ' ')}</span>
-                  <span className="text-sm font-medium text-charcoal-800">{count}</span>
-                </div>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Resolved vs Unresolved */}
-        <Card>
-          <CardHeader><CardTitle>Resolved vs Unresolved</CardTitle></CardHeader>
-          <CardBody>
-            <div className="flex items-center justify-center mb-4">
-              <div className="relative w-32 h-32">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="10" />
-                  <circle
-                    cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="10"
-                    strokeDasharray={`${2 * Math.PI * 40 * (completionRate / 100)} ${2 * Math.PI * 40}`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-charcoal-800">{completionRate}%</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-around">
-              <div className="text-center">
-                <p className="text-lg font-bold text-primary-600">{resolved}</p>
-                <p className="text-xs text-charcoal-500">Resolved</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-charcoal-600">{unresolved}</p>
-                <p className="text-xs text-charcoal-500">Unresolved</p>
-              </div>
-            </div>
+          <CardHeader><CardTitle>Report Status Distribution</CardTitle></CardHeader>
+          <CardBody className="h-80 flex flex-col items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={110}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                  itemStyle={{ textTransform: 'capitalize' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', textTransform: 'capitalize' }} />
+              </PieChart>
+            </ResponsiveContainer>
           </CardBody>
         </Card>
       </div>

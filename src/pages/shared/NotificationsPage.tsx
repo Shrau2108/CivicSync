@@ -65,7 +65,7 @@ export function NotificationsPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search notifications..." />
         </div>
         <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'unread')} className="input sm:w-40">
@@ -90,18 +90,18 @@ export function NotificationsPage() {
                 {!notif.is_read && <div className="w-2 h-2 rounded-full bg-primary-500 mt-2 flex-shrink-0" />}
                 {notif.is_read && <div className="w-2 flex-shrink-0" />}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!notif.is_read ? 'font-medium text-charcoal-800' : 'text-charcoal-600'}`}>{notif.title}</p>
-                  {notif.description && <p className="text-xs text-charcoal-500 mt-0.5">{notif.description}</p>}
+                  <p className={`text-sm ${!notif.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>{notif.title}</p>
+                  {notif.description && <p className="text-xs text-muted-foreground mt-0.5">{notif.description}</p>}
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-charcoal-400">{timeAgo(notif.created_at)}</span>
-                    <span className="text-xs text-charcoal-400">&bull;</span>
-                    <span className="text-xs text-charcoal-400 capitalize">{notif.category.replace(/_/g, ' ')}</span>
+                    <span className="text-xs text-muted-foreground">{timeAgo(notif.created_at)}</span>
+                    <span className="text-xs text-muted-foreground">&bull;</span>
+                    <span className="text-xs text-muted-foreground capitalize">{notif.category.replace(/_/g, ' ')}</span>
                   </div>
                 </div>
                 {(notif.related_report_id || notif.related_task_id) && (
                   <Link
                     to={notif.related_report_id ? `/app/reports/${notif.related_report_id}` : `/app/tasks/${notif.related_task_id}`}
-                    className="text-xs text-primary-600 hover:text-primary-700 flex-shrink-0"
+                    className="text-xs text-primary hover:text-primary-700 flex-shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
                     View

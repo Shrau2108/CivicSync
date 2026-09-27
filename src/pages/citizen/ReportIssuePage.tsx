@@ -162,20 +162,20 @@ export function ReportIssuePage() {
           <div key={s} className="flex items-center gap-2 flex-1">
             <div className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all',
-              step >= s ? 'bg-primary-600 text-white' : 'bg-charcoal-100 text-charcoal-400'
+              step >= s ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
             )}>
               {step > s ? <CheckCircle2 className="w-4 h-4" /> : s}
             </div>
-            <span className={cn('text-xs font-medium hidden sm:block', step >= s ? 'text-charcoal-700' : 'text-charcoal-400')}>
+            <span className={cn('text-xs font-medium hidden sm:block', step >= s ? 'text-muted-foreground' : 'text-muted-foreground')}>
               {['Information', 'Location', 'Evidence', 'Review'][s - 1]}
             </span>
-            {s < 4 && <div className={cn('h-px flex-1', step > s ? 'bg-primary-400' : 'bg-charcoal-200')} />}
+            {s < 4 && <div className={cn('h-px flex-1', step > s ? 'bg-primary-400' : 'bg-muted')} />}
           </div>
         ))}
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm animate-fade-in">
+        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-red-200 text-red-700 text-sm animate-fade-in">
           {error}
         </div>
       )}
@@ -198,7 +198,7 @@ export function ReportIssuePage() {
                 placeholder="e.g., Pothole on Main Street near the park"
                 maxLength={120}
               />
-              <p className="text-xs text-charcoal-400 mt-1">{title.length}/120 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">{title.length}/120 characters</p>
             </div>
 
             <div>
@@ -210,7 +210,7 @@ export function ReportIssuePage() {
                 placeholder="Provide a detailed description of the issue..."
                 maxLength={2000}
               />
-              <p className="text-xs text-charcoal-400 mt-1">{description.length}/2000 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">{description.length}/2000 characters</p>
             </div>
 
             <div>
@@ -223,10 +223,10 @@ export function ReportIssuePage() {
                     onClick={() => setCategoryId(cat.id)}
                     className={cn(
                       'p-3 rounded-lg border-2 text-center transition-all',
-                      categoryId === cat.id ? 'border-primary-500 bg-primary-50' : 'border-charcoal-200 hover:border-charcoal-300'
+                      categoryId === cat.id ? 'border-primary bg-primary/10' : 'border-border hover:border-charcoal-300'
                     )}
                   >
-                    <p className={cn('text-sm font-medium', categoryId === cat.id ? 'text-primary-700' : 'text-charcoal-700')}>
+                    <p className={cn('text-sm font-medium', categoryId === cat.id ? 'text-primary' : 'text-muted-foreground')}>
                       {cat.name}
                     </p>
                   </button>
@@ -244,11 +244,11 @@ export function ReportIssuePage() {
                     onClick={() => setSeverity(opt.value)}
                     className={cn(
                       'p-3 rounded-lg border-2 text-left transition-all',
-                      severity === opt.value ? 'border-primary-500 bg-primary-50' : 'border-charcoal-200 hover:border-charcoal-300'
+                      severity === opt.value ? 'border-primary bg-primary/10' : 'border-border hover:border-charcoal-300'
                     )}
                   >
-                    <p className={cn('text-sm font-medium', severity === opt.value ? 'text-primary-700' : 'text-charcoal-700')}>{opt.label}</p>
-                    <p className="text-xs text-charcoal-500">{opt.desc}</p>
+                    <p className={cn('text-sm font-medium', severity === opt.value ? 'text-primary' : 'text-muted-foreground')}>{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -311,7 +311,7 @@ export function ReportIssuePage() {
             )}
 
             <div>
-              <label className="label">Address <span className="text-charcoal-400 font-normal">(optional)</span></label>
+              <label className="label">Address <span className="text-muted-foreground font-normal">(optional)</span></label>
               <input
                 type="text"
                 value={address}
@@ -347,7 +347,7 @@ export function ReportIssuePage() {
             </div>
 
             {latitude !== null && longitude !== null && (
-              <div className="p-3 rounded-lg bg-primary-50 border border-primary-200 text-primary-700 text-sm flex items-center gap-2">
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
                 Location set: {latitude.toFixed(4)}, {longitude.toFixed(4)}
               </div>
@@ -374,10 +374,10 @@ export function ReportIssuePage() {
           </CardHeader>
           <CardBody className="space-y-4">
             <label className="block">
-              <div className="border-2 border-dashed border-charcoal-200 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 transition-colors">
-                <Upload className="w-8 h-8 text-charcoal-400 mx-auto mb-2" />
-                <p className="text-sm font-medium text-charcoal-600">Click to upload files</p>
-                <p className="text-xs text-charcoal-400 mt-1">JPEG, PNG, WebP, MP4, MOV up to 10MB each</p>
+              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 transition-colors">
+                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">Click to upload files</p>
+                <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, MP4, MOV up to 10MB each</p>
               </div>
               <input type="file" multiple accept={ACCEPTED_TYPES.join(',')} onChange={handleFileSelect} className="hidden" />
             </label>
@@ -385,15 +385,15 @@ export function ReportIssuePage() {
             {files.length > 0 && (
               <div className="space-y-2">
                 {files.map((file, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-charcoal-50 border border-charcoal-200">
-                    <div className="w-10 h-10 rounded-lg bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-                      <ImageIcon className="w-5 h-5 text-charcoal-400" />
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <ImageIcon className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-charcoal-700 truncate">{file.name}</p>
-                      <p className="text-xs text-charcoal-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="text-sm font-medium text-muted-foreground truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
-                    <button type="button" onClick={() => removeFile(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-charcoal-400 hover:text-red-500">
+                    <button type="button" onClick={() => removeFile(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -423,49 +423,49 @@ export function ReportIssuePage() {
           <CardBody className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Title</p>
-                <p className="text-sm text-charcoal-700 mt-1">{title}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Title</p>
+                <p className="text-sm text-muted-foreground mt-1">{title}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Category</p>
-                <p className="text-sm text-charcoal-700 mt-1">{categories.find(c => c.id === categoryId)?.name || '—'}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</p>
+                <p className="text-sm text-muted-foreground mt-1">{categories.find(c => c.id === categoryId)?.name || '—'}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Severity</p>
-                <p className="text-sm text-charcoal-700 mt-1 capitalize">{severity}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Severity</p>
+                <p className="text-sm text-muted-foreground mt-1 capitalize">{severity}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Affected People</p>
-                <p className="text-sm text-charcoal-700 mt-1">{affectedPeople}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Affected People</p>
+                <p className="text-sm text-muted-foreground mt-1">{affectedPeople}</p>
               </div>
               <div className="sm:col-span-2">
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Description</p>
-                <p className="text-sm text-charcoal-700 mt-1">{description}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</p>
+                <p className="text-sm text-muted-foreground mt-1">{description}</p>
               </div>
               {address && (
                 <div className="sm:col-span-2">
-                  <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Address</p>
-                  <p className="text-sm text-charcoal-700 mt-1">{address}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Address</p>
+                  <p className="text-sm text-muted-foreground mt-1">{address}</p>
                 </div>
               )}
               <div>
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Coordinates</p>
-                <p className="text-sm text-charcoal-700 mt-1">{latitude?.toFixed(4)}, {longitude?.toFixed(4)}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Coordinates</p>
+                <p className="text-sm text-muted-foreground mt-1">{latitude?.toFixed(4)}, {longitude?.toFixed(4)}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-charcoal-400 uppercase tracking-wide">Evidence Files</p>
-                <p className="text-sm text-charcoal-700 mt-1">{files.length} file(s)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Evidence Files</p>
+                <p className="text-sm text-muted-foreground mt-1">{files.length} file(s)</p>
               </div>
             </div>
 
             {submitting && (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-charcoal-600">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Submitting your report...
                 </div>
-                <div className="w-full bg-charcoal-100 rounded-full h-2">
-                  <div className="bg-primary-600 h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
                 </div>
               </div>
             )}

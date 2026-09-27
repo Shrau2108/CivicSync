@@ -68,7 +68,7 @@ export function PriorityQueuePage() {
       </div>
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search queue..." />
       </div>
 
@@ -84,24 +84,24 @@ export function PriorityQueuePage() {
                 <CardBody>
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                      index === 0 ? 'bg-red-100 text-red-600' : 'bg-charcoal-100 text-charcoal-600'
+                      index === 0 ? 'bg-red-100 text-destructive' : 'bg-muted text-muted-foreground'
                     }`}>
                       {index + 1}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-mono text-charcoal-400">{item.data.report_id}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{item.data.report_id}</span>
                         <StatusBadge status={item.data.status} />
                       </div>
-                      <p className="font-medium text-charcoal-800 truncate">{item.data.title}</p>
+                      <p className="font-medium text-foreground truncate">{item.data.title}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        {item.data.category && <span className="text-xs text-charcoal-500">{item.data.category.name}</span>}
-                        <span className="text-xs text-charcoal-400">{formatDate(item.data.created_at)}</span>
+                        {item.data.category && <span className="text-xs text-muted-foreground">{item.data.category.name}</span>}
+                        <span className="text-xs text-muted-foreground">{formatDate(item.data.created_at)}</span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <PriorityBadge level={item.data.priority_level} />
-                      <span className="text-xs font-mono text-charcoal-500">Score: {item.score}</span>
+                      <span className="text-xs font-mono text-muted-foreground">Score: {item.score}</span>
                     </div>
                   </div>
                 </CardBody>

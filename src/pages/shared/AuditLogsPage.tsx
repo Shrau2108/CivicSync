@@ -40,7 +40,7 @@ export function AuditLogsPage() {
       <PageHeader title="Audit Logs" description="System-wide activity trail" />
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search by action or user..." />
       </div>
 
@@ -53,11 +53,11 @@ export function AuditLogsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-charcoal-100">
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3">Actor</th>
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3">Action</th>
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3 hidden sm:table-cell">Entity</th>
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3 hidden sm:table-cell">Time</th>
+                <tr className="border-b border-border">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3">Actor</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3">Action</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3 hidden sm:table-cell">Entity</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3 hidden sm:table-cell">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-charcoal-100">
@@ -65,19 +65,19 @@ export function AuditLogsPage() {
                   <tr key={log.id} className="hover:bg-charcoal-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-charcoal-100 flex items-center justify-center flex-shrink-0">
-                          <Activity className="w-3.5 h-3.5 text-charcoal-500" />
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                          <Activity className="w-3.5 h-3.5 text-muted-foreground" />
                         </div>
-                        <span className="text-sm text-charcoal-700">{log.actor?.full_name || 'System'}</span>
+                        <span className="text-sm text-muted-foreground">{log.actor?.full_name || 'System'}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-charcoal-700">{log.action.replace(/_/g, ' ')}</span>
+                      <span className="text-sm font-medium text-muted-foreground">{log.action.replace(/_/g, ' ')}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-500 hidden sm:table-cell">
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
                       {log.entity_type} {log.entity_id && `(${log.entity_id.substring(0, 8)}...)`}
                     </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-400 hidden sm:table-cell">
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
                       <span title={formatDateTime(log.created_at)}>{timeAgo(log.created_at)}</span>
                     </td>
                   </tr>

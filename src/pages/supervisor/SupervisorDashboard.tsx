@@ -57,8 +57,8 @@ export function SupervisorDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-charcoal-800">Incoming Reports</h2>
-            <Link to="/app/supervisor/incoming" className="text-sm text-primary-600 hover:text-primary-700">View All</Link>
+            <h2 className="text-base font-semibold text-foreground">Incoming Reports</h2>
+            <Link to="/app/supervisor/incoming" className="text-sm text-primary hover:text-primary-700">View All</Link>
           </div>
           {incoming.length === 0 ? (
             <Card><CardBody><EmptyState icon={<Inbox className="w-8 h-8" />} title="No incoming reports" /></CardBody></Card>
@@ -69,13 +69,13 @@ export function SupervisorDashboard() {
                   <Card hoverable>
                     <CardBody>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-mono text-charcoal-400">{report.report_id}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{report.report_id}</span>
                         <StatusBadge status={report.status} />
                       </div>
-                      <p className="font-medium text-charcoal-800 truncate">{report.title}</p>
+                      <p className="font-medium text-foreground truncate">{report.title}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        {report.category && <span className="text-xs text-charcoal-500">{report.category.name}</span>}
-                        <span className="text-xs text-charcoal-400">{formatDate(report.created_at)}</span>
+                        {report.category && <span className="text-xs text-muted-foreground">{report.category.name}</span>}
+                        <span className="text-xs text-muted-foreground">{formatDate(report.created_at)}</span>
                       </div>
                     </CardBody>
                   </Card>
@@ -87,8 +87,8 @@ export function SupervisorDashboard() {
 
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-charcoal-800">Pending Verification</h2>
-            <Link to="/app/supervisor/verification" className="text-sm text-primary-600 hover:text-primary-700">View All</Link>
+            <h2 className="text-base font-semibold text-foreground">Pending Verification</h2>
+            <Link to="/app/supervisor/verification" className="text-sm text-primary hover:text-primary-700">View All</Link>
           </div>
           {pendingVerification.length === 0 ? (
             <Card><CardBody><EmptyState icon={<ShieldCheck className="w-8 h-8" />} title="No pending verifications" /></CardBody></Card>
@@ -99,11 +99,11 @@ export function SupervisorDashboard() {
                   <Card hoverable>
                     <CardBody>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-mono text-charcoal-400">{task.task_id}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{task.task_id}</span>
                         <StatusBadge status={task.status} />
                       </div>
-                      <p className="font-medium text-charcoal-800 truncate">{task.title}</p>
-                      <p className="text-xs text-charcoal-400 mt-1">{formatDate(task.updated_at)}</p>
+                      <p className="font-medium text-foreground truncate">{task.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatDate(task.updated_at)}</p>
                     </CardBody>
                   </Card>
                 </Link>

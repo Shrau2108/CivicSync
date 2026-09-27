@@ -64,7 +64,7 @@ export function VolunteerManagementPage() {
       <PageHeader title="Volunteer Management" description="Review and verify volunteer profiles" />
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search volunteers..." />
       </div>
 
@@ -79,17 +79,17 @@ export function VolunteerManagementPage() {
               <CardBody>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
                       {vol.profile?.full_name?.charAt(0).toUpperCase() || '?'}
                     </div>
                     <div>
-                      <p className="font-medium text-charcoal-800">{vol.profile?.full_name || 'Unknown'}</p>
-                      <p className="text-xs text-charcoal-400">{formatDate(vol.created_at)}</p>
+                      <p className="font-medium text-foreground">{vol.profile?.full_name || 'Unknown'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(vol.created_at)}</p>
                     </div>
                   </div>
                   <span className={`badge border ${
-                    vol.verification_status === 'verified' ? 'bg-primary-50 text-primary-700 border-primary-200' :
-                    vol.verification_status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                    vol.verification_status === 'verified' ? 'bg-primary/10 text-primary border-primary/20' :
+                    vol.verification_status === 'rejected' ? 'bg-destructive/10 text-red-700 border-red-200' :
                     'bg-amber-50 text-amber-700 border-amber-200'
                   }`}>
                     {vol.verification_status}
@@ -98,23 +98,23 @@ export function VolunteerManagementPage() {
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="text-charcoal-400">Workload:</span>{' '}
-                    <span className="text-charcoal-700">{vol.current_workload}/{vol.max_workload}</span>
+                    <span className="text-muted-foreground">Workload:</span>{' '}
+                    <span className="text-muted-foreground">{vol.current_workload}/{vol.max_workload}</span>
                   </div>
                   <div>
-                    <span className="text-charcoal-400">Completed:</span>{' '}
-                    <span className="text-charcoal-700">{vol.completed_tasks}</span>
+                    <span className="text-muted-foreground">Completed:</span>{' '}
+                    <span className="text-muted-foreground">{vol.completed_tasks}</span>
                   </div>
                   {vol.rating && (
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-amber-400" />
-                      <span className="text-charcoal-700">{vol.rating.toFixed(1)}</span>
+                      <span className="text-muted-foreground">{vol.rating.toFixed(1)}</span>
                     </div>
                   )}
                   {vol.service_area && (
                     <div>
-                      <span className="text-charcoal-400">Area:</span>{' '}
-                      <span className="text-charcoal-700">{vol.service_area}</span>
+                      <span className="text-muted-foreground">Area:</span>{' '}
+                      <span className="text-muted-foreground">{vol.service_area}</span>
                     </div>
                   )}
                 </div>
@@ -122,7 +122,7 @@ export function VolunteerManagementPage() {
                 {vol.skills && vol.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {vol.skills.map(s => (
-                      <span key={s.id} className="badge bg-charcoal-100 text-charcoal-700 border border-charcoal-200">{s.skill}</span>
+                      <span key={s.id} className="badge bg-muted text-muted-foreground border border-border">{s.skill}</span>
                     ))}
                   </div>
                 )}

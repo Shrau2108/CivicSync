@@ -92,7 +92,7 @@ export function getPriorityColor(level: PriorityLevel | null | undefined): strin
     case 'high': return 'text-priority-high bg-priority-highBg border-priority-highBorder';
     case 'medium': return 'text-priority-medium bg-priority-mediumBg border-priority-mediumBorder';
     case 'low': return 'text-priority-low bg-priority-lowBg border-priority-lowBorder';
-    default: return 'text-charcoal-500 bg-charcoal-100 border-charcoal-200';
+    default: return 'text-muted-foreground bg-muted border-border';
   }
 }
 
@@ -108,13 +108,13 @@ export function getStatusColor(status: string): string {
     case 'evidence_submitted': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
     case 'under_verification': return 'bg-violet-50 text-violet-700 border-violet-200';
     case 'resolved': case 'completed': return 'bg-green-50 text-green-700 border-green-200';
-    case 'rejected': return 'bg-red-50 text-red-700 border-red-200';
+    case 'rejected': return 'bg-destructive/10 text-red-700 border-red-200';
     case 'duplicate': return 'bg-gray-50 text-gray-700 border-gray-200';
     case 'reopened': return 'bg-pink-50 text-pink-700 border-pink-200';
-    case 'cancelled': return 'bg-charcoal-100 text-charcoal-600 border-charcoal-200';
+    case 'cancelled': return 'bg-muted text-muted-foreground border-border';
     case 'declined': return 'bg-rose-50 text-rose-700 border-rose-200';
     case 'reassigned': return 'bg-sky-50 text-sky-700 border-sky-200';
-    default: return 'bg-charcoal-100 text-charcoal-600 border-charcoal-200';
+    default: return 'bg-muted text-muted-foreground border-border';
   }
 }
 

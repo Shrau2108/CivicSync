@@ -93,7 +93,7 @@ export function TaskAssignmentPage() {
       />
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search reports..." />
       </div>
 
@@ -109,15 +109,15 @@ export function TaskAssignmentPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-charcoal-400">{report.report_id}</span>
+                      <span className="text-xs font-mono text-muted-foreground">{report.report_id}</span>
                       <StatusBadge status={report.status} />
                       <PriorityBadge level={report.priority_level} />
                     </div>
-                    <p className="font-medium text-charcoal-800">{report.title}</p>
+                    <p className="font-medium text-foreground">{report.title}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      {report.category && <span className="text-xs text-charcoal-500">{report.category.name}</span>}
-                      <span className="text-xs text-charcoal-400">{formatDate(report.created_at)}</span>
-                      <span className="text-xs text-charcoal-400">{report.affected_people} affected</span>
+                      {report.category && <span className="text-xs text-muted-foreground">{report.category.name}</span>}
+                      <span className="text-xs text-muted-foreground">{formatDate(report.created_at)}</span>
+                      <span className="text-xs text-muted-foreground">{report.affected_people} affected</span>
                     </div>
                   </div>
                   <button onClick={() => setAssignModal(report)} className="btn-primary text-sm flex-shrink-0">

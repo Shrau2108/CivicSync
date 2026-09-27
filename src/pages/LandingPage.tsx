@@ -39,15 +39,15 @@ const steps = [
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-card">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-charcoal-100">
+      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-primary-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
               <Leaf className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-charcoal-800">CivicSync</span>
+            <span className="text-lg font-bold text-foreground">CivicSync</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/login" className="btn-ghost text-sm">Login</Link>
@@ -59,15 +59,15 @@ export function LandingPage() {
       {/* Hero */}
       <section className="pt-32 pb-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-200 text-primary-700 text-xs font-medium mb-6 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-6 animate-fade-in">
             <Zap className="w-3.5 h-3.5" />
             Smart Community Issue Reporting & Resolution
           </div>
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-charcoal-800 leading-tight tracking-tight animate-slide-up">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight animate-slide-up">
             Turn Civic Problems Into{' '}
-            <span className="text-primary-600">Verified Solutions</span>
+            <span className="text-primary">Verified Solutions</span>
           </h1>
-          <p className="mt-6 text-base sm:text-lg text-charcoal-500 max-w-2xl mx-auto animate-slide-up">
+          <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto animate-slide-up">
             CivicSync connects citizens, volunteers, NGOs, and administrators to report,
             prioritize, assign, resolve, and verify community issues.
           </p>
@@ -104,20 +104,20 @@ export function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="py-20 px-4 sm:px-6 bg-charcoal-50">
+      <section className="py-20 px-4 sm:px-6 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-charcoal-800">Platform Features</h2>
-            <p className="text-charcoal-500 mt-2">Everything needed for end-to-end civic issue resolution</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Platform Features</h2>
+            <p className="text-muted-foreground mt-2">Everything needed for end-to-end civic issue resolution</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((f) => (
               <div key={f.title} className="card p-5 hover:shadow-elevated transition-all duration-200 group">
-                <div className="w-10 h-10 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   {f.icon}
                 </div>
-                <h3 className="font-semibold text-charcoal-800 mb-1.5">{f.title}</h3>
-                <p className="text-sm text-charcoal-500">{f.desc}</p>
+                <h3 className="font-semibold text-foreground mb-1.5">{f.title}</h3>
+                <p className="text-sm text-muted-foreground">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -128,21 +128,21 @@ export function LandingPage() {
       <section id="how-it-works" className="py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-charcoal-800">How It Works</h2>
-            <p className="text-charcoal-500 mt-2">From report to resolution in 14 steps</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">How It Works</h2>
+            <p className="text-muted-foreground mt-2">From report to resolution in 14 steps</p>
           </div>
           <div className="space-y-3">
             {steps.map((step, i) => (
               <div key={i} className="flex items-center gap-4 group">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold group-hover:scale-110 transition-transform">
                   {i + 1}
                 </div>
                 <div className="flex-1 card p-4 group-hover:border-primary-300 transition-colors">
-                  <p className="text-sm font-medium text-charcoal-700">{step}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{step}</p>
                 </div>
                 {i < steps.length - 1 && (
                   <div className="hidden sm:block absolute" style={{ left: '20px' }}>
-                    <div className="w-px h-8 bg-charcoal-200" />
+                    <div className="w-px h-8 bg-muted" />
                   </div>
                 )}
               </div>
@@ -166,7 +166,7 @@ export function LandingPage() {
               { icon: <ClipboardList className="w-6 h-6" />, title: 'Administrator', desc: 'Manage users, configure system, view analytics' },
             ].map((r) => (
               <div key={r.title} className="bg-navy-800 rounded-xl p-5 border border-navy-700 hover:border-primary-500 transition-colors">
-                <div className="w-12 h-12 rounded-lg bg-primary-600 text-white flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-lg bg-primary text-white flex items-center justify-center mb-4">
                   {r.icon}
                 </div>
                 <h3 className="font-semibold text-white mb-1">{r.title}</h3>
@@ -180,8 +180,8 @@ export function LandingPage() {
       {/* CTA */}
       <section className="py-20 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-charcoal-800">Ready to Make a Difference?</h2>
-          <p className="text-charcoal-500 mt-3 mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Ready to Make a Difference?</h2>
+          <p className="text-muted-foreground mt-3 mb-8">
             Join CivicSync and help your community resolve issues faster.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -197,15 +197,15 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-charcoal-800 text-charcoal-300 py-8 px-4 sm:px-6">
+      <footer className="bg-muted text-charcoal-300 py-8 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Leaf className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-white">CivicSync</span>
           </div>
-          <p className="text-sm text-charcoal-400">
+          <p className="text-sm text-muted-foreground">
             From community problems to verified solutions.
           </p>
           <div className="flex items-center gap-4 text-sm">

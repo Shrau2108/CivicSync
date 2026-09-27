@@ -68,15 +68,15 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     under_verification: 'bg-violet-50 text-violet-700 border-violet-200',
     resolved: 'bg-green-50 text-green-700 border-green-200',
     completed: 'bg-green-50 text-green-700 border-green-200',
-    rejected: 'bg-red-50 text-red-700 border-red-200',
+    rejected: 'bg-destructive/10 text-red-700 border-red-200',
     duplicate: 'bg-gray-50 text-gray-700 border-gray-200',
     reopened: 'bg-pink-50 text-pink-700 border-pink-200',
-    cancelled: 'bg-charcoal-100 text-charcoal-600 border-charcoal-200',
+    cancelled: 'bg-muted text-muted-foreground border-border',
     declined: 'bg-rose-50 text-rose-700 border-rose-200',
     reassigned: 'bg-sky-50 text-sky-700 border-sky-200',
   };
   const label = labels[status] || status;
-  const color = colors[status] || 'bg-charcoal-100 text-charcoal-600 border-charcoal-200';
+  const color = colors[status] || 'bg-muted text-muted-foreground border-border';
   return <span className={cn('badge border', color)}>{label}</span>;
 }
 
@@ -92,10 +92,10 @@ export function RoleBadge({ role }: RoleBadgeProps) {
     admin: 'Administrator',
   };
   const colors: Record<string, string> = {
-    citizen: 'bg-primary-50 text-primary-700 border-primary-200',
+    citizen: 'bg-primary/10 text-primary border-primary/20',
     volunteer: 'bg-teal-50 text-teal-700 border-teal-200',
     supervisor: 'bg-navy-50 text-navy-700 border-navy-200',
-    admin: 'bg-charcoal-800 text-white border-charcoal-900',
+    admin: 'bg-muted text-white border-charcoal-900',
   };
   return <span className={cn('badge border', colors[role] || colors.citizen)}>{labels[role] || role}</span>;
 }

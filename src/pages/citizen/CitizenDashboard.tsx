@@ -62,7 +62,7 @@ export function CitizenDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <h2 className="text-base font-semibold text-charcoal-800 mb-3">Recent Reports</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">Recent Reports</h2>
           {reports.length === 0 ? (
             <Card><CardBody>
               <EmptyState
@@ -79,11 +79,11 @@ export function CitizenDashboard() {
                   <Card hoverable>
                     <CardBody className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-charcoal-800 truncate">{report.title}</p>
+                        <p className="font-medium text-foreground truncate">{report.title}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <StatusBadge status={report.status} />
-                          {report.category && <span className="text-xs text-charcoal-500">{report.category.name}</span>}
-                          <span className="text-xs text-charcoal-400">{formatDate(report.created_at)}</span>
+                          {report.category && <span className="text-xs text-muted-foreground">{report.category.name}</span>}
+                          <span className="text-xs text-muted-foreground">{formatDate(report.created_at)}</span>
                         </div>
                       </div>
                       <PriorityBadge level={report.priority_level} />
@@ -96,7 +96,7 @@ export function CitizenDashboard() {
         </div>
 
         <div>
-          <h2 className="text-base font-semibold text-charcoal-800 mb-3">Recent Notifications</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">Recent Notifications</h2>
           {notifications.length === 0 ? (
             <Card><CardBody>
               <EmptyState icon={<Bell className="w-8 h-8" />} title="No notifications" />
@@ -109,9 +109,9 @@ export function CitizenDashboard() {
                     <div className="flex items-start gap-2">
                       {!notif.is_read && <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5 flex-shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-charcoal-700">{notif.title}</p>
-                        {notif.description && <p className="text-xs text-charcoal-500 mt-0.5">{notif.description}</p>}
-                        <p className="text-xs text-charcoal-400 mt-1">{timeAgo(notif.created_at)}</p>
+                        <p className="text-sm font-medium text-muted-foreground">{notif.title}</p>
+                        {notif.description && <p className="text-xs text-muted-foreground mt-0.5">{notif.description}</p>}
+                        <p className="text-xs text-muted-foreground mt-1">{timeAgo(notif.created_at)}</p>
                       </div>
                     </div>
                   </div>

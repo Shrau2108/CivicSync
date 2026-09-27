@@ -73,11 +73,11 @@ export function FeedbackPage() {
         <PageHeader title="Feedback Submitted" />
         <Card>
           <CardBody className="text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8 text-primary-600" />
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold text-charcoal-800 mb-2">Thank You!</h2>
-            <p className="text-sm text-charcoal-500 mb-6">
+            <h2 className="text-lg font-semibold text-foreground mb-2">Thank You!</h2>
+            <p className="text-sm text-muted-foreground mb-6">
               Your feedback has been recorded{requestReopen ? ' and the report has been reopened for further review' : ''}.
             </p>
             <Link to="/app/citizen/reports" className="btn-primary">Back to My Reports</Link>
@@ -120,14 +120,14 @@ export function FeedbackPage() {
                     />
                   </button>
                 ))}
-                <span className="text-sm text-charcoal-500 ml-2">
+                <span className="text-sm text-muted-foreground ml-2">
                   {rating > 0 ? `${rating} star${rating > 1 ? 's' : ''}` : 'Click to rate'}
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="label">Comments <span className="text-charcoal-400 font-normal">(optional)</span></label>
+              <label className="label">Comments <span className="text-muted-foreground font-normal">(optional)</span></label>
               <textarea
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
@@ -143,7 +143,7 @@ export function FeedbackPage() {
                   type="checkbox"
                   checked={requestReopen}
                   onChange={(e) => setRequestReopen(e.target.checked)}
-                  className="w-4 h-4 rounded border-charcoal-300 text-primary-600 focus:ring-primary-500"
+                  className="w-4 h-4 rounded border-charcoal-300 text-primary focus:ring-primary-500"
                 />
                 <span className="text-sm font-medium text-amber-800 flex items-center gap-1.5">
                   <RotateCcw className="w-4 h-4" />

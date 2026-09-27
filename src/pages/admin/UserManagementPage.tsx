@@ -71,7 +71,7 @@ export function UserManagementPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search by name or email..." />
         </div>
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="input sm:w-48">
@@ -92,12 +92,12 @@ export function UserManagementPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-charcoal-100">
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3">Name</th>
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3 hidden sm:table-cell">Email</th>
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3">Role</th>
-                  <th className="text-left text-xs font-medium text-charcoal-500 uppercase px-4 py-3 hidden sm:table-cell">Joined</th>
-                  <th className="text-right text-xs font-medium text-charcoal-500 uppercase px-4 py-3">Actions</th>
+                <tr className="border-b border-border">
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3">Name</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3 hidden sm:table-cell">Email</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3">Role</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground uppercase px-4 py-3 hidden sm:table-cell">Joined</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground uppercase px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-charcoal-100">
@@ -105,15 +105,15 @@ export function UserManagementPage() {
                   <tr key={p.id} className="hover:bg-charcoal-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-xs">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs">
                           {p.full_name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-sm font-medium text-charcoal-800">{p.full_name}</span>
+                        <span className="text-sm font-medium text-foreground">{p.full_name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-charcoal-500 hidden sm:table-cell">{p.email}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{p.email}</td>
                     <td className="px-4 py-3"><RoleBadge role={p.role} /></td>
-                    <td className="px-4 py-3 text-sm text-charcoal-500 hidden sm:table-cell">{formatDate(p.created_at)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{formatDate(p.created_at)}</td>
                     <td className="px-4 py-3 text-right">
                       {p.id !== currentUser?.id && (
                         <button
@@ -148,7 +148,7 @@ export function UserManagementPage() {
             <option value="supervisor">Supervisor</option>
             <option value="admin">Administrator</option>
           </select>
-          <p className="text-xs text-charcoal-400 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Note: Supervisor and Admin roles grant access to sensitive data and operations.
           </p>
         </div>
