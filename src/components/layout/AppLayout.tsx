@@ -63,7 +63,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
 };
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { profile, signOut, demoMode } = useAuth();
+  const { profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -88,11 +88,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {demoMode && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 px-3 py-1 text-center text-xs font-semibold text-amber-950">
-          FRONTEND DEMO MODE - local data only
-        </div>
-      )}
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 flex-col bg-card border-r border-border fixed inset-y-0 left-0 z-30">
         <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
