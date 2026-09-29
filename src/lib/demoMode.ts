@@ -1,5 +1,5 @@
 import type {
-  Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, Volunteer,
+  Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, Volunteer,
 } from '@/types';
 
 const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -163,6 +163,13 @@ export function demoAssignTask(taskId: string, volunteerId: string, assignedBy: 
 export function demoUpdateTaskStatus(taskId: string, status: string): void {
   const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
   if (task) { task.status = status as Task['status']; task.updated_at = new Date().toISOString(); }
+  writeStore(store);
+}
+
+export function demoAddEvidence(taskId: string, evidence: Evidence): void {
+  const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error('Demo task not found');
+  task.evidence = [...(task.evidence || []), evidence];
   writeStore(store);
 }
 

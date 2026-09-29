@@ -6,7 +6,7 @@ import type {
   VolunteerAvailability,
 } from '@/types';
 import { computeFileHash } from '@/lib/duplicateDetection';
-import { DEMO_MODE, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask } from '@/lib/demoMode';
+import { DEMO_MODE, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask, demoAddEvidence } from '@/lib/demoMode';
 
 // ============================================================
 // CATEGORIES
@@ -560,6 +560,24 @@ export async function uploadEvidence(
   evidenceType: 'before' | 'after',
   notes?: string
 ): Promise<Evidence> {
+  if (DEMO_MODE) {
+    const evidence: Evidence = {
+      id: `demo-evidence-${Date.now()}`,
+      task_id: taskId,
+      volunteer_id: volunteerId,
+      evidence_type: evidenceType,
+      file_url: URL.createObjectURL(file),
+      file_name: file.name,
+      file_size: file.size,
+      file_hash: null,
+      storage_path: null,
+      notes: notes || null,
+      submitted_at: new Date().toISOString(),
+    };
+    demoAddEvidence(taskId, evidence);
+    return evidence;
+  }
+
   const fileExt = file.name.split('.').pop();
   const fileName = `${taskId}/${evidenceType}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
   const { error: uploadError } = await supabase.storage
