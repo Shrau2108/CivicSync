@@ -337,7 +337,7 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
   return (
     <div className="overflow-hidden rounded-[28px] border border-border bg-card shadow-soft">
       <div className="border-b border-border bg-slate-950/60 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className={`flex flex-col gap-3 ${compact ? 'xl:items-stretch' : 'xl:flex-row xl:items-center xl:justify-between'}`}>
           <div className="relative w-full xl:max-w-[720px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -358,7 +358,7 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 self-end xl:self-auto">
+          <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap justify-start self-stretch' : 'self-end xl:self-auto'}`}>
             <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-900/80 p-1">
               <button type="button" onClick={() => setViewMode('map')} className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition ${viewMode === 'map' ? 'bg-cyan-500/20 text-cyan-200' : 'text-slate-300 hover:text-white'}`}>
                 <MapIcon className="h-4 w-4" /> Map
@@ -442,7 +442,7 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className={`flex ${compact ? 'min-h-[520px]' : 'min-h-[620px]'} flex-col xl:flex-row`}>
-        <div className={`${viewMode === 'map' ? 'block' : 'hidden xl:block'} relative flex-1 min-w-0`}>
+        <div className={`${viewMode === 'map' ? 'block' : compact ? 'hidden' : 'hidden xl:block'} relative flex-1 min-w-0`}>
           <div ref={mapContainerRef} className={`${compact ? 'h-[520px]' : 'h-[620px]'} w-full bg-slate-950`} />
 
           {!apiKey && !mapError ? (
@@ -551,7 +551,7 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
 
-        <aside className={`${viewMode === 'list' ? 'flex' : 'hidden xl:flex'} w-full flex-col border-t border-border bg-slate-950/40 xl:w-[360px] xl:border-l xl:border-t-0`}>
+        <aside className={`${viewMode === 'list' ? 'flex' : compact ? 'hidden' : 'hidden xl:flex'} w-full flex-col border-t border-border bg-slate-950/40 ${compact ? 'xl:w-full' : 'xl:w-[360px]'} xl:border-l xl:border-t-0`}>
           <div className="flex items-center justify-between border-b border-border bg-slate-950/60 p-4">
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setIssueScope('all')} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${issueScope === 'all' ? 'bg-cyan-500/15 text-cyan-200' : 'bg-slate-900 text-slate-300 hover:text-white'}`}>
