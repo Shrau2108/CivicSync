@@ -7,8 +7,8 @@ import {
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatCard, EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
-import { fetchReports, fetchTasks, fetchVolunteers } from '@/services/api';
-import type { Report, Task, Volunteer } from '@/types';
+import { fetchCategories, fetchReports, fetchTasks, fetchVolunteers } from '@/services/api';
+import type { Report, ReportCategory, Task, Volunteer } from '@/types';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
 
@@ -16,6 +16,7 @@ export function AnalyticsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [categories, setCategories] = useState<ReportCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,10 +24,11 @@ export function AnalyticsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [r, t, v] = await Promise.all([fetchReports(), fetchTasks(), fetchVolunteers()]);
+      const [r, t, v, c] = await Promise.all([fetchReports(), fetchTasks(), fetchVolunteers(), fetchCategories()]);
       setReports(r);
       setTasks(t);
       setVolunteers(v);
+      setCategories(c);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
     } finally {
@@ -39,7 +41,7 @@ export function AnalyticsPage() {
   if (loading) return <LoadingState message="Loading analytics..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  if (reports.length === 0 && tasks.length === 0) {
+  if (reports.length === 0 && tasks.length === 0 && volunteers.length === 0) {
     return (
       <div>
         <PageHeader title="Analytics" description="Insights and trends across the platform" />
@@ -51,12 +53,13 @@ export function AnalyticsPage() {
   }
 
   // Process data for charts
-  const categoryCount: Record<string, number> = {};
+  const categoryCount: Record<string, number> = Object.fromEntries(categories.map(category => [category.name, 0]));
+  const categoriesById = new Map(categories.map(category => [category.id, category.name]));
   reports.forEach(r => {
-    const cat = r.category?.name || 'Other';
+    const cat = r.category?.name || categoriesById.get(r.category_id || '') || 'Uncategorized';
     categoryCount[cat] = (categoryCount[cat] || 0) + 1;
   });
-  const categoryData = Object.entries(categoryCount).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  const categoryData = Object.entries(categoryCount).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 
   const statusCount: Record<string, number> = {};
   reports.forEach(r => {
@@ -66,12 +69,24 @@ export function AnalyticsPage() {
   const statusData = Object.entries(statusCount).map(([name, value]) => ({ name, value }));
 
   // Process timeline data (reports by date)
-  const dateCount: Record<string, number> = {};
+  const dateCount = new Map<string, number>();
   reports.forEach(r => {
-    const date = new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    dateCount[date] = (dateCount[date] || 0) + 1;
+    const createdAt = new Date(r.created_at);
+    if (Number.isNaN(createdAt.getTime())) return;
+    const dayKey = `${createdAt.getFullYear()}-${createdAt.getMonth()}-${createdAt.getDate()}`;
+    dateCount.set(dayKey, (dateCount.get(dayKey) || 0) + 1);
   });
-  const timelineData = Object.entries(dateCount).slice(0, 7).reverse().map(([date, count]) => ({ date, count }));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const timelineData = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 6 + index);
+    const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    return {
+      date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      count: dateCount.get(dayKey) || 0,
+    };
+  });
 
   const resolved = reports.filter(r => r.status === 'resolved').length;
   const completionRate = reports.length > 0 ? Math.round((resolved / reports.length) * 100) : 0;
