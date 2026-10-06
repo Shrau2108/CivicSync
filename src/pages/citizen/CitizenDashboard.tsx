@@ -347,166 +347,136 @@ export function CitizenDashboard() {
         })}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.65fr_0.95fr]">
-        <section className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Recent Reports</h2>
-              <p className="text-sm text-muted-foreground">Issue history and resolution progress</p>
-            </div>
-            <Link to="/app/citizen/reports" className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80">
-              View all reports <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b border-border bg-muted/20">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="relative w-full max-w-md">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    ref={searchRef}
-                    name="report-search"
-                    aria-label="Search reports"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    className="input pl-10 pr-20"
-                    placeholder="Search issues, locations, or keywords..."
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    Ctrl K
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    value={statusFilter}
-                    aria-label="Filter reports by status"
-                    onChange={(event) => setStatusFilter(event.target.value)}
-                    className="input min-w-[140px] py-2 text-sm"
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                  </select>
-                  <select
-                    value={priorityFilter}
-                    aria-label="Filter reports by priority"
-                    onChange={(event) => setPriorityFilter(event.target.value)}
-                    className="input min-w-[140px] py-2 text-sm"
-                  >
-                    <option value="all">All priorities</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
-              </div>
-            </CardHeader>
-
-            {filteredReports.length === 0 ? (
-              <CardBody className="flex min-h-[280px] items-center justify-center">
-                <div className="text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-base font-semibold text-foreground">No reports match your filters</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Try a different keyword or reset your filters.</p>
-                </div>
-              </CardBody>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-auto border-collapse">
-                  <thead className="bg-muted/20 text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">#</th>
-                      <th className="px-4 py-3 font-medium">Issue Title</th>
-                      <th className="px-4 py-3 font-medium">Category</th>
-                      <th className="px-4 py-3 font-medium">Location</th>
-                      <th className="px-4 py-3 font-medium">Date</th>
-                      <th className="px-4 py-3 font-medium">Priority</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Progress</th>
-                      <th className="px-4 py-3 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredReports.slice(0, 5).map((report, index) => (
-                      <tr
-                        key={report.id}
-                        className="border-t border-border transition-colors hover:bg-muted/20"
-                        onClick={() => navigate(`/app/reports/${report.id}`)}
-                      >
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>
-                        <td className="px-4 py-3">
-                          <div className="min-w-[180px]">
-                            <p className="font-medium text-foreground">{report.title}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{report.category?.name || 'Uncategorized'}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{getAreaLabel(report)}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(report.created_at)}</td>
-                        <td className="px-4 py-3"><PriorityBadge level={report.priority_level} /></td>
-                        <td className="px-4 py-3"><StatusBadge status={report.status} /></td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2 min-w-[120px]">
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-primary"
-                                style={{ width: `${statusProgress[report.status] ?? 20}%` }}
-                              />
-                            </div>
-                            <span className="text-xs font-medium text-muted-foreground">{statusProgress[report.status] ?? 20}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button type="button" onClick={() => navigate(`/app/reports/${report.id}`)} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80">
-                            View <ArrowRight className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </section>
-
-        <aside className="space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="flex items-center justify-between border-b border-border bg-muted/20">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
+        <div className="space-y-6 min-w-0">
+          <section className="space-y-4 min-w-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle>Community Activity</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">Recent updates from your area</p>
+                <h2 className="text-lg font-semibold text-foreground">Recent Reports</h2>
+                <p className="text-sm text-muted-foreground">Issue history and resolution progress</p>
               </div>
-              <Link to="/app/notifications" className="text-xs font-medium text-primary hover:text-primary/80">See all</Link>
-            </CardHeader>
-            <CardBody className="p-0">
-              <div className="divide-y divide-border">
-                {activities.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 p-4">
-                    <div className={`${item.status === 'resolved' || item.status === 'read' ? 'bg-emerald-500/10 text-emerald-500' : item.status === 'submitted' || item.status === 'unread' ? 'bg-cyan-500/10 text-cyan-500' : 'bg-amber-500/10 text-amber-500'} mt-0.5 flex h-8 w-8 items-center justify-center rounded-full`}>
-                      {item.status === 'resolved' ? <ShieldCheck className="h-4 w-4" /> : item.status === 'submitted' || item.status === 'unread' ? <Sparkles className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{item.description}</p>
-                      <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span>{item.timestamp}</span>
-                        <span>•</span>
-                        <span className="capitalize">{item.status.replace('_', ' ')}</span>
-                      </div>
-                    </div>
+              <Link to="/app/citizen/reports" className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80">
+                View all reports <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <Card className="overflow-hidden">
+              <CardHeader className="border-b border-border bg-muted/20">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="relative w-full max-w-md">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      ref={searchRef}
+                      name="report-search"
+                      aria-label="Search reports"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      className="input pl-10 pr-20"
+                      placeholder="Search issues, locations, or keywords..."
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      Ctrl K
+                    </span>
                   </div>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
+
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={statusFilter}
+                      aria-label="Filter reports by status"
+                      onChange={(event) => setStatusFilter(event.target.value)}
+                      className="input min-w-[140px] py-2 text-sm"
+                    >
+                      <option value="all">All statuses</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="under_review">Under Review</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                    <select
+                      value={priorityFilter}
+                      aria-label="Filter reports by priority"
+                      onChange={(event) => setPriorityFilter(event.target.value)}
+                      className="input min-w-[140px] py-2 text-sm"
+                    >
+                      <option value="all">All priorities</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+              </CardHeader>
+
+              {filteredReports.length === 0 ? (
+                <CardBody className="flex min-h-[280px] items-center justify-center">
+                  <div className="text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-base font-semibold text-foreground">No reports match your filters</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Try a different keyword or reset your filters.</p>
+                  </div>
+                </CardBody>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full table-auto border-collapse">
+                    <thead className="bg-muted/20 text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">#</th>
+                        <th className="px-4 py-3 font-medium">Issue Title</th>
+                        <th className="px-4 py-3 font-medium">Category</th>
+                        <th className="px-4 py-3 font-medium">Location</th>
+                        <th className="px-4 py-3 font-medium">Date</th>
+                        <th className="px-4 py-3 font-medium">Priority</th>
+                        <th className="px-4 py-3 font-medium">Status</th>
+                        <th className="px-4 py-3 font-medium">Progress</th>
+                        <th className="px-4 py-3 font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReports.slice(0, 5).map((report, index) => (
+                        <tr
+                          key={report.id}
+                          className="border-t border-border transition-colors hover:bg-muted/20"
+                          onClick={() => navigate(`/app/reports/${report.id}`)}
+                        >
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>
+                          <td className="px-4 py-3">
+                            <div className="min-w-[180px]">
+                              <p className="font-medium text-foreground">{report.title}</p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{report.category?.name || 'Uncategorized'}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{getAreaLabel(report)}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(report.created_at)}</td>
+                          <td className="px-4 py-3"><PriorityBadge level={report.priority_level} /></td>
+                          <td className="px-4 py-3"><StatusBadge status={report.status} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 min-w-[120px]">
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-primary"
+                                  style={{ width: `${statusProgress[report.status] ?? 20}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground">{statusProgress[report.status] ?? 20}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button type="button" onClick={() => navigate(`/app/reports/${report.id}`)} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80">
+                              View <ArrowRight className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </section>
 
           <Card className="overflow-hidden">
             <CardHeader className="border-b border-border bg-muted/20">
@@ -555,6 +525,38 @@ export function CitizenDashboard() {
                     <Area type="monotone" dataKey="resolved" stroke="#34d399" fill="url(#resolvedFill)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        <aside className="min-w-0">
+          <Card className="overflow-hidden">
+            <CardHeader className="flex items-center justify-between border-b border-border bg-muted/20">
+              <div>
+                <CardTitle>Community Activity</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Recent updates from your area</p>
+              </div>
+              <Link to="/app/notifications" className="text-xs font-medium text-primary hover:text-primary/80">See all</Link>
+            </CardHeader>
+            <CardBody className="p-0">
+              <div className="divide-y divide-border">
+                {activities.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3 p-4">
+                    <div className={`${item.status === 'resolved' || item.status === 'read' ? 'bg-emerald-500/10 text-emerald-500' : item.status === 'submitted' || item.status === 'unread' ? 'bg-cyan-500/10 text-cyan-500' : 'bg-amber-500/10 text-amber-500'} mt-0.5 flex h-8 w-8 items-center justify-center rounded-full`}>
+                      {item.status === 'resolved' ? <ShieldCheck className="h-4 w-4" /> : item.status === 'submitted' || item.status === 'unread' ? <Sparkles className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{item.title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{item.description}</p>
+                      <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>{item.timestamp}</span>
+                        <span>•</span>
+                        <span className="capitalize">{item.status.replace('_', ' ')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardBody>
           </Card>
