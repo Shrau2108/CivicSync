@@ -12,7 +12,7 @@ export type TaskStatus =
 export type PriorityLevel = 'critical' | 'high' | 'medium' | 'low';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 
-export type AssignmentStatus = 'assigned' | 'accepted' | 'declined' | 'reassigned' | 'cancelled';
+export type AssignmentStatus = 'assigned' | 'accepted' | 'declined' | 'reassigned' | 'cancelled' | 'completed';
 export type VerificationDecision = 'approved' | 'rejected' | 'resubmission_requested';
 export type DuplicateStatus = 'pending' | 'confirmed_duplicate' | 'marked_separate';
 export type SimilarityType = 'text' | 'geographic' | 'file_hash' | 'category';
@@ -299,6 +299,10 @@ export interface VolunteerMatchResult {
   score: number;
   reasons: string[];
   skillMatch: number;
+  availabilityStatus: 'available' | 'schedule_unset';
+  availabilityScore: number;
+  distanceScore: number | null;
+  workloadScore: number;
   availabilityMatch: boolean;
   workloadOk: boolean;
   distance: number | null;

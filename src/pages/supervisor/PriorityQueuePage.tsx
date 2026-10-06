@@ -253,7 +253,7 @@ export function PriorityQueuePage() {
       await createNotification({
         user_id: selectedMatch.volunteer.user_id,
         title: 'New Task Assigned',
-        description: `You have been assigned: ${max.data.title}`,
+        description: `${task.task_id} · ${max.level} priority · ${max.data.title} · ${max.data.category?.name || 'Uncategorized'} · ${getReportLocation(max.data)} · ${selectedMatch.distance === null ? 'Distance unavailable' : `${selectedMatch.distance.toFixed(1)} km straight-line distance`}. Open My Tasks for full details and destination.`,
         category: 'task_assigned',
         related_report_id: max.data.id,
         related_task_id: task.id,
@@ -328,6 +328,7 @@ export function PriorityQueuePage() {
                   <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize ${getPriorityClasses(nextEntry.level)}`}>{nextEntry.level} priority</span>
                   <StatusBadge status={nextEntry.data.status} />
                   <span className="text-sm font-semibold tabular-nums text-white">Score {nextEntry.score.toFixed(2)} / 100</span>
+                  <Link to={`/app/supervisor/matching?reportId=${encodeURIComponent(nextEntry.data.id)}`} className="inline-flex items-center gap-1 text-sm font-medium text-sky-300 hover:text-sky-200">Open Volunteer Matching <ArrowRight className="h-4 w-4" /></Link>
                 </div>
               </>
             ) : (

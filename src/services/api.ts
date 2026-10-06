@@ -6,6 +6,7 @@ import type {
   VolunteerAvailability,
 } from '@/types';
 import { computeFileHash } from '@/lib/duplicateDetection';
+import { matchVolunteersToTask } from '@/lib/volunteerMatching';
 import { DEMO_MODE, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoUpdateReportPriority, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask } from '@/lib/demoMode';
 
 // ============================================================
@@ -519,17 +520,23 @@ export async function updateTaskStatus(taskId: string, status: string, changedBy
 // TASK ASSIGNMENTS
 // ============================================================
 export async function assignTask(taskId: string, volunteerId: string, assignedBy: string): Promise<TaskAssignment> {
-  if (DEMO_MODE) return demoAssignTask(taskId, volunteerId, assignedBy);
-  const { data, error } = await supabase
-    .from('task_assignments')
-    .insert({
-      task_id: taskId,
-      volunteer_id: volunteerId,
-      assigned_by: assignedBy,
-      status: 'assigned',
-    })
-    .select()
-    .single();
+  if (DEMO_MODE) {
+    const task = demoTasks().find((item) => item.id === taskId);
+    const volunteer = demoVolunteers().find((item) => item.user_id === volunteerId);
+    if (!task || !volunteer) throw new Error('Task or volunteer is no longer available');
+    const location = task.report?.location;
+    const match = matchVolunteersToTask(
+      task,
+      [volunteer],
+      location ? { lat: location.latitude, lng: location.longitude } : null
+    )[0];
+    if (!match) throw new Error('Volunteer is no longer eligible for this task');
+    return demoAssignTask(taskId, volunteerId, assignedBy);
+  }
+  const { data, error } = await supabase.rpc('assign_task_atomic', {
+    p_task_id: taskId,
+    p_volunteer_id: volunteerId,
+  });
   if (error) throw error;
   return data as unknown as TaskAssignment;
 }
@@ -546,15 +553,11 @@ export async function acceptTask(taskId: string, volunteerId: string): Promise<{
 
 export async function declineTask(taskId: string, volunteerId: string, reason: string): Promise<void> {
   if (DEMO_MODE) { demoDeclineTask(taskId, volunteerId, reason); return; }
-  const { error } = await supabase
-    .from('task_assignments')
-    .update({
-      status: 'declined',
-      declined_at: new Date().toISOString(),
-      decline_reason: reason,
-    })
-    .eq('task_id', taskId)
-    .eq('volunteer_id', volunteerId);
+  const { error } = await supabase.rpc('decline_task_atomic', {
+    p_task_id: taskId,
+    p_volunteer_id: volunteerId,
+    p_reason: reason,
+  });
   if (error) throw error;
 }
 

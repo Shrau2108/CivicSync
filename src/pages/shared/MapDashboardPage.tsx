@@ -46,13 +46,32 @@ export function MapDashboardPage() {
   return <CommunityMap />;
 }
 
-export function CommunityMap({ compact = false }: { compact?: boolean }) {
+export interface CommunityMapVolunteerMarker {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  score?: number;
+}
+
+const EMPTY_VOLUNTEER_MARKERS: CommunityMapVolunteerMarker[] = [];
+
+export function CommunityMap({
+  compact = false,
+  focusReportId,
+  volunteerMarkers = EMPTY_VOLUNTEER_MARKERS,
+}: {
+  compact?: boolean;
+  focusReportId?: string;
+  volunteerMarkers?: CommunityMapVolunteerMarker[];
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const focusedReportAppliedRef = useRef<string | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [categories, setCategories] = useState<ReportCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +88,7 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
   const [draftPriority, setDraftPriority] = useState(priorityFilter);
   const [mapType, setMapType] = useState<MapType>('roadmap');
   const [mapReady, setMapReady] = useState(false);
+  const [mapsLibraryReady, setMapsLibraryReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
@@ -107,43 +127,62 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
     if (!apiKey) {
       setMapLoaded(false);
       setMapReady(false);
+      setMapsLibraryReady(false);
       return;
     }
+
+    let cancelled = false;
+    const prepareMapLibrary = () => {
+      const maps = (window as any).google?.maps;
+      if (!maps?.importLibrary) {
+        setMapError('Google Maps failed to initialize. Check the API configuration.');
+        return;
+      }
+      maps.importLibrary('maps')
+        .then(() => {
+          if (cancelled) return;
+          setMapLoaded(true);
+          setMapReady(true);
+          setMapsLibraryReady(true);
+        })
+        .catch(() => {
+          if (!cancelled) setMapError('Google Maps failed to initialize. Check the API configuration.');
+        });
+    };
 
     const scriptId = 'civicsync-google-maps-script';
     const script = document.getElementById(scriptId) as HTMLScriptElement | null;
 
     if ((window as any).google && (window as any).google.maps) {
-      setMapLoaded(true);
-      setMapReady(true);
-      return;
+      prepareMapLibrary();
+      return () => { cancelled = true; };
     }
 
     if (script) {
-      script.addEventListener('load', () => {
-        setMapLoaded(true);
-        setMapReady(true);
-      });
-      script.addEventListener('error', () => {
+      const handleLoad = () => prepareMapLibrary();
+      const handleError = () => {
         setMapError('Google Maps failed to load. Check the API configuration.');
-      });
-      return;
+      };
+      script.addEventListener('load', handleLoad, { once: true });
+      script.addEventListener('error', handleError, { once: true });
+      return () => {
+        cancelled = true;
+        script.removeEventListener('load', handleLoad);
+        script.removeEventListener('error', handleError);
+      };
     }
 
     const newScript = document.createElement('script');
     newScript.id = scriptId;
     newScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker&v=weekly`;
     newScript.async = true;
-    newScript.onload = () => {
-      setMapLoaded(true);
-      setMapReady(true);
-    };
+    newScript.onload = prepareMapLibrary;
     newScript.onerror = () => {
       setMapError('Google Maps failed to load. Check the API configuration.');
     };
     document.body.appendChild(newScript);
 
-    return undefined;
+    return () => { cancelled = true; };
   }, [apiKey]);
 
   const categoryChips = useMemo(() => {
@@ -189,8 +228,17 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
   }, [filteredReports, selectedReport]);
 
   useEffect(() => {
+    if (!focusReportId || focusedReportAppliedRef.current === focusReportId) return;
+    const focusedReport = reports.find((report) => report.id === focusReportId);
+    if (focusedReport) {
+      focusedReportAppliedRef.current = focusReportId;
+      setSelectedReport(focusedReport);
+    }
+  }, [focusReportId, reports]);
+
+  useEffect(() => {
     const googleMaps = (window as any).google;
-    if (!mapReady || !apiKey || !mapContainerRef.current || !googleMaps) return;
+    if (!mapReady || !mapsLibraryReady || !apiKey || !mapContainerRef.current || !googleMaps) return;
 
     if (!mapInstanceRef.current) {
       const map = new googleMaps.maps.Map(mapContainerRef.current, {
@@ -261,7 +309,7 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
       const report = group.reports[0];
       const clusterCount = group.reports.length;
       const color = getPriorityColor(group.reports.some((item: Report) => item.priority_level === 'critical') ? 'critical' : group.reports.some((item: Report) => item.priority_level === 'high') ? 'high' : group.reports.some((item: Report) => item.priority_level === 'medium') ? 'medium' : 'low');
-      const marker = new (window as any).google.maps.Marker({
+      const marker = new googleMaps.maps.Marker({
         position: center,
         map,
         title: clusterCount > 1 ? `${clusterCount} reports near this location` : report.title,
@@ -297,6 +345,30 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
       bounds.extend(center);
     });
 
+    volunteerMarkers.forEach((volunteer) => {
+      const position = { lat: volunteer.latitude, lng: volunteer.longitude };
+      const marker = new (window as any).google.maps.Marker({
+        position,
+        map,
+        title: `${volunteer.name}${volunteer.score === undefined ? '' : ` · ${volunteer.score.toFixed(1)}% match`}`,
+        icon: {
+          path: googleMaps.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#a78bfa',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        zIndex: 150,
+      });
+      marker.addListener('click', () => {
+        map.panTo(position);
+        map.setZoom(14);
+      });
+      markersRef.current.push(marker);
+      bounds.extend(position);
+    });
+
     if (selectedReport && filteredReports.some((report) => report.id === selectedReport.id)) {
       const selected = filteredReports.find((report) => report.id === selectedReport.id)!;
       const target = { lat: selected.location!.latitude, lng: selected.location!.longitude };
@@ -310,10 +382,10 @@ export function CommunityMap({ compact = false }: { compact?: boolean }) {
       }
     }
 
-    if (clusterGroups.length > 1) {
+    if (clusterGroups.length > 1 || volunteerMarkers.length > 0) {
       map.fitBounds(bounds);
     }
-  }, [apiKey, filteredReports, mapReady, mapType, selectedReport]);
+  }, [apiKey, filteredReports, mapReady, mapsLibraryReady, mapType, selectedReport, volunteerMarkers]);
 
   const applyFilters = () => {
     setStatusFilter(draftStatus);

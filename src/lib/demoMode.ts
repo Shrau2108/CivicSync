@@ -65,6 +65,17 @@ function writeStore(store: DemoStore): DemoStore {
   return store;
 }
 
+function syncDemoVolunteerWorkload(store: DemoStore, volunteerId: string): void {
+  const workload = store.tasks.reduce((count, task) => {
+    if (!['assigned', 'accepted', 'in_progress', 'evidence_submitted', 'under_verification'].includes(task.status)) return count;
+    return count + (task.assignments || []).filter((assignment) =>
+      assignment.volunteer_id === volunteerId && ['assigned', 'accepted'].includes(assignment.status)
+    ).length;
+  }, 0);
+  const volunteer = store.volunteers.find((item) => item.user_id === volunteerId);
+  if (volunteer) volunteer.current_workload = workload;
+}
+
 export function demoProfile(id: string): Profile {
   return demoProfiles.find((profile) => profile.id === id) || demoProfiles[0];
 }
@@ -138,7 +149,12 @@ export function demoUpdateReportPriority(reportId: string, priorityLevel: string
   writeStore(store);
 }
 
-export function demoVolunteers(): Volunteer[] { return readStore().volunteers; }
+export function demoVolunteers(): Volunteer[] {
+  const store = readStore();
+  store.volunteers.forEach((volunteer) => syncDemoVolunteerWorkload(store, volunteer.user_id));
+  writeStore(store);
+  return store.volunteers;
+}
 
 export function demoTasks(): Task[] { return readStore().tasks.map(enrichTask); }
 export function demoTasksForVolunteer(volunteerId: string): Task[] {
@@ -168,28 +184,75 @@ export function demoCreateTask(input: { report_id: string; title: string; descri
 export function demoAssignTask(taskId: string, volunteerId: string, assignedBy: string): TaskAssignment {
   const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
   if (!task) throw new Error('Demo task not found');
+  if (task.assignments?.some((item) => ['assigned', 'accepted'].includes(item.status))) {
+    throw new Error('Task already has an active volunteer assignment');
+  }
+  const volunteer = store.volunteers.find((item) => item.user_id === volunteerId);
+  if (!volunteer || !volunteer.is_verified || volunteer.verification_status !== 'verified' || volunteer.current_workload >= volunteer.max_workload) {
+    throw new Error('Volunteer is no longer eligible for this task');
+  }
   const assignment: TaskAssignment = { id: `demo-assignment-${Date.now()}`, task_id: taskId, volunteer_id: volunteerId, status: 'assigned', assigned_by: assignedBy, accepted_at: null, declined_at: null, decline_reason: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), volunteer: demoProfile(volunteerId) };
-  task.assignments = [...(task.assignments || []), assignment]; writeStore(store); return assignment;
+  task.assignments = [...(task.assignments || []), assignment];
+  task.status = 'assigned';
+  task.updated_at = new Date().toISOString();
+  const report = store.reports.find((item) => item.id === task.report_id);
+  if (report) {
+    report.status = 'assigned';
+    report.assigned_volunteer_id = volunteerId;
+    report.updated_at = new Date().toISOString();
+  }
+  syncDemoVolunteerWorkload(store, volunteerId);
+  writeStore(store);
+  return assignment;
 }
 
 export function demoUpdateTaskStatus(taskId: string, status: string): void {
   const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
-  if (task) { task.status = status as Task['status']; task.updated_at = new Date().toISOString(); }
+  if (task) {
+    task.status = status as Task['status'];
+    task.updated_at = new Date().toISOString();
+    if (status === 'completed' || status === 'cancelled' || status === 'rejected') {
+      task.assignments = (task.assignments || []).map((assignment) =>
+        ['assigned', 'accepted'].includes(assignment.status)
+          ? { ...assignment, status: status === 'completed' ? 'completed' : 'cancelled' }
+          : assignment
+      );
+    }
+    task.assignments?.forEach((assignment) => syncDemoVolunteerWorkload(store, assignment.volunteer_id));
+  }
   writeStore(store);
 }
 
 export function demoAcceptTask(taskId: string, volunteerId: string): { success: boolean; error?: string } {
   const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
-  const assignment = task?.assignments?.find((item) => item.volunteer_id === volunteerId);
-  if (!task || !assignment) return { success: false, error: 'No demo assignment found.' };
+  const assignment = task?.assignments?.find((item) => item.volunteer_id === volunteerId && item.status === 'assigned');
+  if (!task || !assignment) return { success: false, error: 'No pending demo assignment found.' };
+  if (task.assignments?.some((item) => item.status === 'accepted' && item.volunteer_id !== volunteerId)) {
+    return { success: false, error: 'Task already accepted by another volunteer.' };
+  }
   assignment.status = 'accepted'; assignment.accepted_at = new Date().toISOString(); task.status = 'accepted'; writeStore(store);
   const report = store.reports.find((item) => item.id === task.report_id); if (report) report.status = 'accepted'; writeStore(store);
   return { success: true };
 }
 
 export function demoDeclineTask(taskId: string, volunteerId: string, reason: string): void {
-  const store = readStore(); const task = store.tasks.find((item) => item.id === taskId); const assignment = task?.assignments?.find((item) => item.volunteer_id === volunteerId);
-  if (assignment) { assignment.status = 'declined'; assignment.decline_reason = reason; assignment.declined_at = new Date().toISOString(); } writeStore(store);
+  const store = readStore(); const task = store.tasks.find((item) => item.id === taskId); const assignment = task?.assignments?.find((item) => item.volunteer_id === volunteerId && item.status === 'assigned');
+  if (assignment?.status === 'assigned') {
+    assignment.status = 'declined';
+    assignment.decline_reason = reason;
+    assignment.declined_at = new Date().toISOString();
+    if (!task?.assignments?.some((item) => ['assigned', 'accepted'].includes(item.status))) {
+      if (task) task.status = 'declined';
+      const report = store.reports.find((item) => item.id === task?.report_id);
+      if (report) {
+        report.status = 'assigned';
+        report.assigned_volunteer_id = null;
+        report.updated_at = new Date().toISOString();
+      }
+    }
+    syncDemoVolunteerWorkload(store, volunteerId);
+  }
+  writeStore(store);
 }
 
 export function demoReset(): void { sessionStorage.removeItem(STORAGE_KEY); }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ClipboardCheck, Search, UserCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
@@ -8,6 +8,7 @@ import { EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { fetchReports, fetchVolunteers, createTask, assignTask, updateReportStatus, createNotification, createAuditLog } from '@/services/api';
 import { formatDate } from '@/lib/utils';
+import { matchVolunteersToTask } from '@/lib/volunteerMatching';
 import type { Report, Volunteer } from '@/types';
 
 export function TaskAssignmentPage() {
@@ -27,7 +28,7 @@ export function TaskAssignmentPage() {
     try {
       const [r, v] = await Promise.all([fetchReports(), fetchVolunteers()]);
       setReports(r.filter(rpt => ['verified', 'prioritized'].includes(rpt.status)));
-      setVolunteers(v.filter(vol => vol.is_verified && vol.current_workload < vol.max_workload));
+      setVolunteers(v.filter(vol => vol.is_verified && vol.verification_status === 'verified'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -37,36 +38,57 @@ export function TaskAssignmentPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const volunteerMatches = useMemo(() => {
+    if (!assignModal) return [];
+    return matchVolunteersToTask(
+      { required_skills: [] },
+      volunteers,
+      assignModal.location ? { lat: assignModal.location.latitude, lng: assignModal.location.longitude } : null
+    );
+  }, [assignModal, volunteers]);
+
   const handleAssign = async () => {
     if (!user || !assignModal || !selectedVolunteerId) return;
     setAssigning(true);
     try {
+      const [latestReports, latestVolunteers] = await Promise.all([fetchReports(), fetchVolunteers()]);
+      const latestReport = latestReports.find((report) => report.id === assignModal.id);
+      if (!latestReport || !['verified', 'prioritized'].includes(latestReport.status) || latestReport.is_duplicate) {
+        throw new Error('This report is no longer eligible for assignment. Refresh and try again.');
+      }
+      const latestMatch = matchVolunteersToTask(
+        { required_skills: [] },
+        latestVolunteers,
+        latestReport.location ? { lat: latestReport.location.latitude, lng: latestReport.location.longitude } : null
+      ).find((match) => match.volunteer.user_id === selectedVolunteerId);
+      if (!latestMatch) throw new Error('This volunteer is no longer available or has reached workload capacity.');
+
       const task = await createTask({
-        report_id: assignModal.id,
-        title: assignModal.title,
-        description: assignModal.description,
-        category_id: assignModal.category_id || undefined,
-        priority_level: assignModal.priority_level || undefined,
-        priority_score: assignModal.priority_score || 0,
-        affected_people: assignModal.affected_people,
+        report_id: latestReport.id,
+        title: latestReport.title,
+        description: latestReport.description,
+        category_id: latestReport.category_id || undefined,
+        priority_level: latestReport.priority_level || undefined,
+        priority_score: latestReport.priority_score || 0,
+        affected_people: latestReport.affected_people,
         created_by: user.id,
       });
 
       await assignTask(task.id, selectedVolunteerId, user.id);
-      await updateReportStatus(assignModal.id, 'assigned', user.id);
+      await updateReportStatus(latestReport.id, 'assigned', user.id);
       await createNotification({
         user_id: selectedVolunteerId,
         title: 'New Task Assigned',
-        description: `You have been assigned: ${assignModal.title}`,
+        description: `${task.task_id} · ${latestReport.priority_level || 'Unassigned'} priority · ${latestReport.title} · ${latestReport.category?.name || 'Uncategorized'} · ${latestReport.location?.address || latestReport.location?.area || 'Location unavailable'} · ${latestMatch.distance === null ? 'Distance unavailable' : `${latestMatch.distance.toFixed(1)} km straight-line distance`}. Open My Tasks for details and destination.`,
         category: 'task_assigned',
-        related_report_id: assignModal.id,
+        related_report_id: latestReport.id,
         related_task_id: task.id,
       });
       await createAuditLog({
         action: 'assign_task',
         entity_type: 'task',
         entity_id: task.id,
-        details: { volunteer_id: selectedVolunteerId, report_id: assignModal.id },
+        details: { volunteer_id: selectedVolunteerId, report_id: latestReport.id, match_score: latestMatch.score, distance_km: latestMatch.distance },
       });
       setAssignModal(null);
       setSelectedVolunteerId('');
@@ -139,17 +161,16 @@ export function TaskAssignmentPage() {
         confirmLabel={assigning ? 'Assigning...' : 'Assign'}
       >
         <div className="p-5">
-          {volunteers.length === 0 ? (
+          {volunteerMatches.length === 0 ? (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
-              <AlertCircle className="w-4 h-4" /> No available volunteers. All verified volunteers are at full capacity.
+              <AlertCircle className="w-4 h-4" /> No verified volunteer has an available schedule and remaining workload capacity.
             </div>
           ) : (
             <select value={selectedVolunteerId} onChange={(e) => setSelectedVolunteerId(e.target.value)} className="input">
               <option value="">Select a volunteer...</option>
-              {volunteers.map(v => (
-                <option key={v.id} value={v.user_id}>
-                  {v.profile?.full_name} — {v.current_workload}/{v.max_workload} tasks
-                  {v.skills && v.skills.length > 0 ? ` (${v.skills.map(s => s.skill).join(', ')})` : ''}
+              {volunteerMatches.map(match => (
+                <option key={match.volunteer.id} value={match.volunteer.user_id}>
+                  {match.volunteer.profile?.full_name} — {match.score}% match · {match.volunteer.current_workload}/{match.volunteer.max_workload} tasks · {match.distance === null ? 'distance unavailable' : `${match.distance.toFixed(1)} km`}
                 </option>
               ))}
             </select>

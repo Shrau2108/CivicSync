@@ -368,6 +368,14 @@ export function TaskDetailsPage() {
                     <p className="text-sm text-muted-foreground font-mono">
                       {task.report.location.latitude.toFixed(4)}, {task.report.location.longitude.toFixed(4)}
                     </p>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${task.report.location.latitude},${task.report.location.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
+                    >
+                      Open destination in Maps <ArrowLeft className="h-3 w-3 rotate-180" />
+                    </a>
                   </div>
                 </div>
               </CardBody>
