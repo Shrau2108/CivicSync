@@ -269,7 +269,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main className={cn('flex-1 pt-16 lg:pt-0 min-h-screen', sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64')}>
+      <main className={cn('min-w-0 flex-1 pt-16 lg:pt-0 min-h-screen', sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64')}>
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">{children}</div>
       </main>
     </div>

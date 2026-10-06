@@ -43,6 +43,10 @@ function getStatusLabel(status: string) {
 }
 
 export function MapDashboardPage() {
+  return <CommunityMap />;
+}
+
+export function CommunityMap({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -437,9 +441,9 @@ export function MapDashboardPage() {
         </div>
       </div>
 
-      <div className="flex min-h-[620px] flex-col xl:flex-row">
+      <div className={`flex ${compact ? 'min-h-[520px]' : 'min-h-[620px]'} flex-col xl:flex-row`}>
         <div className={`${viewMode === 'map' ? 'block' : 'hidden xl:block'} relative flex-1 min-w-0`}>
-          <div ref={mapContainerRef} className="h-[620px] w-full bg-slate-950" />
+          <div ref={mapContainerRef} className={`${compact ? 'h-[520px]' : 'h-[620px]'} w-full bg-slate-950`} />
 
           {!apiKey && !mapError ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80">

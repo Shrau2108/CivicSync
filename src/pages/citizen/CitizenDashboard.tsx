@@ -26,6 +26,7 @@ import {
   markAllNotificationsRead,
 } from '@/services/api';
 import { formatDate, timeAgo } from '@/lib/utils';
+import { CommunityMap } from '@/pages/shared/MapDashboardPage';
 import type { Notification, Report } from '@/types';
 
 const statusProgress: Record<string, number> = {
@@ -238,8 +239,6 @@ export function CitizenDashboard() {
   }, [reports]);
 
   const activeCitizens = Math.max(12, new Set(reports.map((report) => report.reporter_id)).size + 10);
-  const mapReports = (filteredReports.length ? filteredReports : reports).slice(0, 5);
-
   const handleMarkRead = async (notificationId: string) => {
     await markNotificationRead(notificationId);
     setNotifications((current) => current.map((notification) =>
@@ -347,7 +346,7 @@ export function CitizenDashboard() {
         })}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
         <div className="space-y-6 min-w-0">
           <section className="space-y-4 min-w-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -563,7 +562,20 @@ export function CitizenDashboard() {
         </aside>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+      <section className="min-w-0 space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Community Map</h2>
+            <p className="text-sm text-muted-foreground">Explore reported issues and activity in your area</p>
+          </div>
+          <Link to="/app/map" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80">
+            View Full Map <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <CommunityMap compact />
+      </section>
+
+      <div className="grid gap-6">
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-border bg-muted/20">
             <div className="flex items-center justify-between gap-3">
@@ -603,51 +615,6 @@ export function CitizenDashboard() {
           </CardBody>
         </Card>
 
-        <Card className="overflow-hidden">
-          <CardHeader className="flex items-center justify-between border-b border-border bg-muted/20">
-            <div>
-              <CardTitle>Community Map</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">Explore and see reported issues in your area</p>
-            </div>
-            <Link to="/app/map" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80">
-              View Full Map <ArrowRight className="h-4 w-4" />
-            </Link>
-          </CardHeader>
-          <CardBody className="p-0">
-            <div className="relative h-64 overflow-hidden bg-[radial-gradient(circle_at_center,#0f172a_0%,#111827_32%,#0b1120_100%)]">
-              <div className="absolute inset-0 opacity-60" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.12) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-              <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-400/30 bg-cyan-500/5 blur-2xl" />
-              {mapReports.map((report, index) => {
-                const left = 10 + ((index + 1) * 18) % 78;
-                const top = 18 + ((index + 1) * 16) % 58;
-                const tone = report.priority_level === 'critical' ? 'bg-red-500' : report.priority_level === 'high' ? 'bg-orange-500' : report.priority_level === 'medium' ? 'bg-amber-500' : 'bg-emerald-500';
-                return (
-                  <button
-                    type="button"
-                    key={report.id}
-                    onClick={() => navigate(`/app/reports/${report.id}`)}
-                    className="group absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${left}%`, top: `${top}%` }}
-                    aria-label={`View report ${report.title}`}
-                  >
-                    <span className={`relative block h-4 w-4 rounded-full border-2 border-white shadow-lg ${tone}`} />
-                    <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-                      {report.title}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between border-t border-border bg-muted/20 px-4 py-3">
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-500" />High Priority</span>
-                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />Active</span>
-                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Resolved</span>
-              </div>
-              <span className="text-xs text-muted-foreground">{mapReports.length} visible markers</span>
-            </div>
-          </CardBody>
-        </Card>
       </div>
 
       <div className="fixed right-5 top-24 z-40 lg:right-8">
