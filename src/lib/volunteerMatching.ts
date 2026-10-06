@@ -1,10 +1,25 @@
 import type { Volunteer, Task, VolunteerMatchResult } from '@/types';
 import { haversineDistance } from './dijkstra';
 
+function isAvailableNow(volunteer: Volunteer, now: Date): boolean {
+  const schedule = volunteer.availability || [];
+  if (schedule.length === 0) return true;
+
+  const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getDay()];
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return schedule.some((slot) =>
+    slot.is_available &&
+    slot.day_of_week === day &&
+    currentTime >= slot.start_time.slice(0, 5) &&
+    currentTime < slot.end_time.slice(0, 5)
+  );
+}
+
 export function matchVolunteersToTask(
-  task: Task,
+  task: Pick<Task, 'required_skills'>,
   volunteers: Volunteer[],
-  taskLocation: { lat: number; lng: number } | null
+  taskLocation: { lat: number; lng: number } | null,
+  now = new Date()
 ): VolunteerMatchResult[] {
   const requiredSkills = task.required_skills || [];
   const results: VolunteerMatchResult[] = [];
@@ -12,6 +27,7 @@ export function matchVolunteersToTask(
   for (const volunteer of volunteers) {
     if (!volunteer.is_verified) continue;
     if (volunteer.current_workload >= volunteer.max_workload) continue;
+    if (!isAvailableNow(volunteer, now)) continue;
 
     const reasons: string[] = [];
     let score = 0;

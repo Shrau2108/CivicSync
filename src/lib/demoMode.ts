@@ -29,7 +29,7 @@ const demoLocation: ReportLocation = {
 const seedReport: Report = {
   id: 'demo-report-1', report_id: 'RPT-DEMO01', title: 'Pothole near the community park',
   description: 'A large pothole is affecting traffic and pedestrians near the park entrance.', category_id: 'demo-category-2',
-  status: 'submitted', severity: 'high', priority_level: 'high', priority_score: 82, affected_people: 24,
+  status: 'submitted', severity: 'high', urgency: 'high', priority_level: 'high', priority_score: 82, affected_people: 24,
   additional_notes: 'Most visible after sunset.', reporter_id: 'demo-citizen', assigned_volunteer_id: null,
   ai_category_confidence: null, ai_category_explanation: null, ai_integration_active: false, is_duplicate: false,
   duplicate_of: null, reviewer_id: null, reviewed_at: null, resolved_at: null, created_at: now, updated_at: now,
@@ -91,14 +91,14 @@ export function demoReportById(id: string): Report | null {
 }
 
 function enrichReport(report: Report): Report {
-  return { ...report, category: demoCategories.find((category) => category.id === report.category_id), reporter: demoProfile(report.reporter_id) };
+  return { ...report, urgency: report.urgency || 'medium', category: demoCategories.find((category) => category.id === report.category_id), reporter: demoProfile(report.reporter_id) };
 }
 
-export function demoCreateReport(input: { title: string; description: string; category_id: string; severity: string; affected_people: number; additional_notes?: string; reporter_id: string }): Report {
+export function demoCreateReport(input: { title: string; description: string; category_id: string; severity: string; urgency?: string; affected_people: number; additional_notes?: string; reporter_id: string }): Report {
   const store = readStore();
   const report: Report = {
     ...input, additional_notes: input.additional_notes || null, id: `demo-report-${Date.now()}`, report_id: `RPT-DEMO${String(store.reports.length + 1).padStart(2, '0')}`,
-    category_id: input.category_id, status: 'submitted', severity: input.severity as Report['severity'], priority_level: input.severity as Report['priority_level'],
+    category_id: input.category_id, status: 'submitted', severity: input.severity as Report['severity'], urgency: (input.urgency || 'medium') as Report['urgency'], priority_level: input.severity as Report['priority_level'],
     priority_score: input.severity === 'critical' ? 100 : input.severity === 'high' ? 80 : input.severity === 'medium' ? 55 : 30,
     assigned_volunteer_id: null, ai_category_confidence: null, ai_category_explanation: null, ai_integration_active: false,
     is_duplicate: false, duplicate_of: null, reviewer_id: null, reviewed_at: null, resolved_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -122,6 +122,18 @@ export function demoUpdateReportStatus(reportId: string, status: string, reviewe
     report.status = status as Report['status']; report.reviewer_id = reviewerId || report.reviewer_id;
     report.reviewed_at = reviewerId ? new Date().toISOString() : report.reviewed_at;
     report.resolved_at = status === 'resolved' ? new Date().toISOString() : report.resolved_at;
+  }
+  writeStore(store);
+}
+
+export function demoUpdateReportPriority(reportId: string, priorityLevel: string, priorityScore: number, urgency?: string): void {
+  const store = readStore();
+  const report = store.reports.find((item) => item.id === reportId);
+  if (report) {
+    report.priority_level = priorityLevel as Report['priority_level'];
+    report.priority_score = priorityScore;
+    if (urgency) report.urgency = urgency as Report['urgency'];
+    report.updated_at = new Date().toISOString();
   }
   writeStore(store);
 }

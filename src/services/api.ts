@@ -6,7 +6,7 @@ import type {
   VolunteerAvailability,
 } from '@/types';
 import { computeFileHash } from '@/lib/duplicateDetection';
-import { DEMO_MODE, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask } from '@/lib/demoMode';
+import { DEMO_MODE, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoUpdateReportPriority, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask } from '@/lib/demoMode';
 
 // ============================================================
 // CATEGORIES
@@ -105,6 +105,7 @@ export async function createReport(input: {
   description: string;
   category_id: string;
   severity: string;
+  urgency?: string;
   affected_people: number;
   additional_notes?: string;
   reporter_id: string;
@@ -117,6 +118,7 @@ export async function createReport(input: {
       description: input.description,
       category_id: input.category_id,
       severity: input.severity,
+      urgency: input.urgency || 'medium',
       affected_people: input.affected_people,
       additional_notes: input.additional_notes || null,
       reporter_id: input.reporter_id,
@@ -157,10 +159,16 @@ export async function reviewReport(
   if (error) throw error;
 }
 
-export async function updateReportPriority(reportId: string, priorityLevel: string, priorityScore: number): Promise<void> {
+export async function updateReportPriority(reportId: string, priorityLevel: string, priorityScore: number, urgency?: string): Promise<void> {
+  if (DEMO_MODE) {
+    demoUpdateReportPriority(reportId, priorityLevel, priorityScore, urgency);
+    return;
+  }
+  const updates: Record<string, unknown> = { priority_level: priorityLevel, priority_score: priorityScore };
+  if (urgency) updates.urgency = urgency;
   const { error } = await supabase
     .from('reports')
-    .update({ priority_level: priorityLevel, priority_score: priorityScore })
+    .update(updates)
     .eq('id', reportId);
   if (error) throw error;
 }

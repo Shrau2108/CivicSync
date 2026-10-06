@@ -55,6 +55,7 @@ export interface Report {
   category_id: string | null;
   status: ReportStatus;
   severity: Severity | null;
+  urgency: PriorityLevel;
   priority_level: PriorityLevel | null;
   priority_score: number;
   affected_people: number;

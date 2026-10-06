@@ -39,10 +39,10 @@ export function calculatePriorityScore(
   input: PriorityInput,
   weights: PriorityWeights = DEFAULT_WEIGHTS
 ): { score: number; level: PriorityLevel; factors: Record<string, number> } {
-  const severityScore = Math.min(input.severity, 100);
-  const urgencyScore = Math.min(input.urgency, 100);
-  const affectedScore = Math.min((input.affectedPeople / 100) * 100, 100);
-  const waitingScore = Math.min((input.waitingTimeHours / 168) * 100, 100);
+  const severityScore = Math.max(0, Math.min(input.severity, 100));
+  const urgencyScore = Math.max(0, Math.min(input.urgency, 100));
+  const affectedScore = Math.max(0, Math.min(input.affectedPeople, 100));
+  const waitingScore = Math.max(0, Math.min((input.waitingTimeHours / 168) * 100, 100));
 
   const total =
     (severityScore * weights.severity +
@@ -63,75 +63,143 @@ export function calculatePriorityScore(
   else if (total >= 55) level = 'high';
   else if (total >= 35) level = 'medium';
 
-  return { score: Math.round(total), level, factors };
+  return { score: Math.round(total * 100) / 100, level, factors };
 }
 
-interface HeapNode {
+export interface PriorityQueueEntry {
   id: string;
   score: number;
+  level: PriorityLevel;
+  factors: Record<string, number>;
+  waitingTimeHours: number;
   data: Report;
 }
 
-export class MaxHeap {
-  private heap: HeapNode[] = [];
+export function calculateReportPriority(report: Report, evaluatedAt = Date.now()): PriorityQueueEntry {
+  const createdAt = Date.parse(report.created_at);
+  const waitingTimeHours = Number.isFinite(createdAt)
+    ? Math.max(0, (evaluatedAt - createdAt) / (1000 * 60 * 60))
+    : 0;
+  const priority = calculatePriorityScore({
+    severity: SEVERITY_VALUES[report.severity || ''] || 0,
+    urgency: URGENCY_VALUES[report.urgency] || URGENCY_VALUES.medium,
+    affectedPeople: report.affected_people || 0,
+    waitingTimeHours,
+  });
 
-  get size(): number {
+  return {
+    id: report.id,
+    score: priority.score,
+    level: priority.level,
+    factors: priority.factors,
+    waitingTimeHours,
+    data: report,
+  };
+}
+
+export class MaxHeap {
+  private heap: PriorityQueueEntry[] = [];
+
+  size(): number {
     return this.heap.length;
   }
 
-  insert(node: HeapNode): void {
-    this.heap.push(node);
-    this.bubbleUp(this.heap.length - 1);
+  isEmpty(): boolean {
+    return this.heap.length === 0;
   }
 
-  extractMax(): HeapNode | undefined {
+  insert(report: Report, evaluatedAt = Date.now()): void {
+    this.heap.push(calculateReportPriority(report, evaluatedAt));
+    this.heapifyUp(this.heap.length - 1);
+  }
+
+  peek(): PriorityQueueEntry | undefined {
+    return this.heap[0];
+  }
+
+  extractMax(): PriorityQueueEntry | undefined {
     if (this.heap.length === 0) return undefined;
     const max = this.heap[0];
     const last = this.heap.pop()!;
     if (this.heap.length > 0) {
       this.heap[0] = last;
-      this.bubbleDown(0);
+      this.heapifyDown(0);
     }
     return max;
   }
 
-  peek(): HeapNode | undefined {
-    return this.heap[0];
+  remove(reportId: string): PriorityQueueEntry | undefined {
+    const index = this.heap.findIndex((entry) => entry.id === reportId);
+    if (index < 0) return undefined;
+
+    const removed = this.heap[index];
+    const last = this.heap.pop()!;
+    if (index < this.heap.length) {
+      this.heap[index] = last;
+      const parent = Math.floor((index - 1) / 2);
+      if (index > 0 && this.compare(this.heap[index], this.heap[parent]) > 0) {
+        this.heapifyUp(index);
+      } else {
+        this.heapifyDown(index);
+      }
+    }
+    return removed;
   }
 
-  toSortedArray(): HeapNode[] {
-    const copy = [...this.heap];
-    copy.sort((a, b) => b.score - a.score);
-    return copy;
+  updatePriority(report: Report, evaluatedAt = Date.now()): void {
+    this.remove(report.id);
+    this.insert(report, evaluatedAt);
   }
 
-  buildHeap(nodes: HeapNode[]): void {
-    this.heap = [...nodes];
+  toPriorityArray(): PriorityQueueEntry[] {
+    const copy = new MaxHeap();
+    copy.heap = [...this.heap];
+    const entries: PriorityQueueEntry[] = [];
+    while (!copy.isEmpty()) entries.push(copy.extractMax()!);
+    return entries;
+  }
+
+  buildHeap(reports: Report[], evaluatedAt = Date.now()): void {
+    this.heap = reports.map((report) => calculateReportPriority(report, evaluatedAt));
     for (let i = Math.floor(this.heap.length / 2) - 1; i >= 0; i--) {
-      this.bubbleDown(i);
+      this.heapifyDown(i);
     }
   }
 
-  private bubbleUp(index: number): void {
+  private compare(a: PriorityQueueEntry, b: PriorityQueueEntry): number {
+    if (a.score !== b.score) return a.score - b.score;
+    if (a.factors.severity !== b.factors.severity) return a.factors.severity - b.factors.severity;
+    if (a.factors.urgency !== b.factors.urgency) return a.factors.urgency - b.factors.urgency;
+    if (a.waitingTimeHours !== b.waitingTimeHours) return a.waitingTimeHours - b.waitingTimeHours;
+
+    const aCreatedAt = Date.parse(a.data.created_at);
+    const bCreatedAt = Date.parse(b.data.created_at);
+    if (Number.isFinite(aCreatedAt) && Number.isFinite(bCreatedAt) && aCreatedAt !== bCreatedAt) {
+      return bCreatedAt - aCreatedAt;
+    }
+    return b.data.report_id.localeCompare(a.data.report_id);
+  }
+
+  private heapifyUp(index: number): void {
     while (index > 0) {
       const parent = Math.floor((index - 1) / 2);
-      if (this.heap[index].score <= this.heap[parent].score) break;
+      if (this.compare(this.heap[index], this.heap[parent]) <= 0) break;
       [this.heap[index], this.heap[parent]] = [this.heap[parent], this.heap[index]];
       index = parent;
     }
   }
 
-  private bubbleDown(index: number): void {
+  private heapifyDown(index: number): void {
     const length = this.heap.length;
     while (true) {
       let largest = index;
       const left = 2 * index + 1;
       const right = 2 * index + 2;
 
-      if (left < length && this.heap[left].score > this.heap[largest].score) {
+      if (left < length && this.compare(this.heap[left], this.heap[largest]) > 0) {
         largest = left;
       }
-      if (right < length && this.heap[right].score > this.heap[largest].score) {
+      if (right < length && this.compare(this.heap[right], this.heap[largest]) > 0) {
         largest = right;
       }
       if (largest === index) break;
@@ -141,15 +209,12 @@ export class MaxHeap {
   }
 }
 
-export function buildPriorityQueue(reports: Report[]): MaxHeap {
+export function buildPriorityQueue(reports: Report[], evaluatedAt = Date.now()): MaxHeap {
   const heap = new MaxHeap();
-  const nodes = reports
-    .filter((r) => r.status !== 'resolved' && r.status !== 'cancelled' && r.status !== 'rejected' && r.status !== 'duplicate')
-    .map((r) => ({
-      id: r.id,
-      score: r.priority_score || 0,
-      data: r,
-    }));
-  heap.buildHeap(nodes);
+  const eligible = reports.filter((report) =>
+    ['verified', 'prioritized'].includes(report.status) &&
+    !report.is_duplicate
+  );
+  heap.buildHeap(eligible, evaluatedAt);
   return heap;
 }
