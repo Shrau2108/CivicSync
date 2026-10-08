@@ -92,6 +92,14 @@ export function CommunityMap({
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  const [citizenLocation, setCitizenLocation] = useState<{lat: number, lng: number, accuracy: number} | null>(null);
+  const [locationErrorMsg, setLocationErrorMsg] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'denied' | 'unavailable' | 'error'>('idle');
+  const citizenMarkerRef = useRef<any>(null);
+  const accuracyCircleRef = useRef<any>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const initialCenterDoneRef = useRef(false);
+
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
   const load = useCallback(async () => {
@@ -184,6 +192,102 @@ export function CommunityMap({
 
     return () => { cancelled = true; };
   }, [apiKey]);
+
+  const startLocationTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationErrorMsg('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setLocationStatus('loading');
+    
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+
+    const id = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude: lat, longitude: lng, accuracy } = position.coords;
+        setCitizenLocation({ lat, lng, accuracy });
+        setLocationStatus('success');
+        setLocationErrorMsg(null);
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+           setLocationStatus('denied');
+           setLocationErrorMsg('Location access is disabled. Enable location permission in your browser settings to see your current position.');
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+           setLocationStatus('unavailable');
+           setLocationErrorMsg('Your current location could not be determined. Please check your device location settings.');
+        } else if (error.code === error.TIMEOUT) {
+           setLocationStatus('error');
+           setLocationErrorMsg('Location request timed out. Please try again.');
+        } else {
+           setLocationStatus('error');
+           setLocationErrorMsg('Unable to detect location.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+    watchIdRef.current = id;
+  }, []);
+
+  useEffect(() => {
+    startLocationTracking();
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, [startLocationTracking]);
+
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !citizenLocation) return;
+    
+    const googleMaps = (window as any).google;
+    const map = mapInstanceRef.current;
+    const position = { lat: citizenLocation.lat, lng: citizenLocation.lng };
+
+    if (!citizenMarkerRef.current) {
+      citizenMarkerRef.current = new googleMaps.maps.Marker({
+        position,
+        map,
+        title: 'You are here',
+        icon: {
+          path: googleMaps.maps.SymbolPath.CIRCLE,
+          scale: 9,
+          fillColor: '#3b82f6',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        zIndex: 1000,
+      });
+
+      accuracyCircleRef.current = new googleMaps.maps.Circle({
+        map,
+        center: position,
+        radius: citizenLocation.accuracy,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.15,
+        strokeColor: '#3b82f6',
+        strokeOpacity: 0.3,
+        strokeWeight: 1,
+        zIndex: 999,
+      });
+      
+      if (!initialCenterDoneRef.current) {
+         map.setCenter(position);
+         map.setZoom(16);
+         initialCenterDoneRef.current = true;
+      }
+    } else {
+      citizenMarkerRef.current.setPosition(position);
+      accuracyCircleRef.current.setCenter(position);
+      accuracyCircleRef.current.setRadius(citizenLocation.accuracy);
+    }
+  }, [citizenLocation, mapReady]);
 
   const categoryChips = useMemo(() => {
     const base = ['All Issues', ...categories.slice(0, 6).map((category) => category.name)];
@@ -374,7 +478,7 @@ export function CommunityMap({
       const target = { lat: selected.location!.latitude, lng: selected.location!.longitude };
       map.panTo(target);
       map.setZoom(12);
-    } else if (filteredReports.length > 0) {
+    } else if (!initialCenterDoneRef.current && filteredReports.length > 0) {
       const firstReport = filteredReports[0];
       if (firstReport.location) {
         map.setCenter({ lat: firstReport.location.latitude, lng: firstReport.location.longitude });
@@ -382,7 +486,7 @@ export function CommunityMap({
       }
     }
 
-    if (clusterGroups.length > 1 || volunteerMarkers.length > 0) {
+    if (!initialCenterDoneRef.current && (clusterGroups.length > 1 || volunteerMarkers.length > 0)) {
       map.fitBounds(bounds);
     }
   }, [apiKey, filteredReports, mapReady, mapsLibraryReady, mapType, selectedReport, volunteerMarkers]);
@@ -535,6 +639,26 @@ export function CommunityMap({
             </div>
           ) : null}
 
+          {locationStatus !== 'idle' && locationStatus !== 'success' && (
+            <div className="absolute inset-x-4 top-[72px] z-20 flex flex-col gap-2">
+              {locationStatus === 'loading' && (
+                 <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-200 shadow-lg backdrop-blur-md">
+                   Detecting your location...
+                 </div>
+              )}
+              {locationErrorMsg && locationStatus !== 'loading' && (
+                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200 shadow-lg backdrop-blur-md flex items-center justify-between">
+                   <span>{locationErrorMsg}</span>
+                   {locationStatus !== 'denied' && (
+                     <button onClick={startLocationTracking} className="ml-4 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30">
+                       Try Again
+                     </button>
+                   )}
+                 </div>
+              )}
+            </div>
+          )}
+
           {selectedReport && apiKey && mapReady && (
             <div className="absolute bottom-4 left-4 z-20 w-[min(92%,360px)] rounded-2xl border border-slate-700 bg-slate-950/90 p-4 shadow-2xl shadow-slate-950/70 backdrop-blur-sm">
               <div className="flex items-start justify-between gap-3">
@@ -586,24 +710,12 @@ export function CommunityMap({
               <Minus className="h-4 w-4" />
             </button>
             <button type="button" onClick={() => {
-              if (!navigator.geolocation) {
-                setMapError('Geolocation is not available in this browser.');
-                return;
+              if (citizenLocation && mapInstanceRef.current) {
+                mapInstanceRef.current.panTo({ lat: citizenLocation.lat, lng: citizenLocation.lng });
+                mapInstanceRef.current.setZoom(16);
+              } else {
+                startLocationTracking();
               }
-
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-                  if (mapInstanceRef.current) {
-                    mapInstanceRef.current.panTo(location);
-                    mapInstanceRef.current.setZoom(14);
-                  }
-                },
-                () => {
-                  setMapError('Location access was denied. You can still browse the map.');
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-              );
             }} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-950/90 text-slate-100 shadow-lg shadow-slate-950/60 hover:border-cyan-500/50 hover:text-cyan-200" aria-label="Use my current location">
               <LocateFixed className="h-4 w-4" />
             </button>

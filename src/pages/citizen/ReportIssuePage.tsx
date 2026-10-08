@@ -61,7 +61,7 @@ export function ReportIssuePage() {
 
   useEffect(() => { loadCategories(); }, [loadCategories]);
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = useCallback(() => {
     setGettingLocation(true);
     setLocationError(null);
     if (!navigator.geolocation) {
@@ -76,12 +76,32 @@ export function ReportIssuePage() {
         setGettingLocation(false);
       },
       (err) => {
-        setLocationError(`Location access denied: ${err.message}. Please enter coordinates manually.`);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError('Location access is disabled. Enable location permission in your browser settings to see your current position.');
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setLocationError('Your current location could not be determined. Please check your device location settings.');
+        } else {
+          setLocationError('Unable to detect location. Please enter coordinates manually.');
+        }
         setGettingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  };
+  }, []);
+
+  useEffect(() => {
+    if (step === 2 && latitude === null && longitude === null) {
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
+          if (result.state === 'granted') {
+            getCurrentLocation();
+          }
+        }).catch(() => {
+          // ignore
+        });
+      }
+    }
+  }, [step, latitude, longitude, getCurrentLocation]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
