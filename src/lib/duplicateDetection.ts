@@ -1,4 +1,4 @@
-import type { Report, DuplicateCandidate, SimilarityType } from '@/types';
+import type { Report, SimilarityType } from '@/types';
 import { haversineDistance } from './dijkstra';
 
 export interface DuplicateDetectionResult {

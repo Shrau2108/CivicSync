@@ -1,21 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Search, CheckCircle2, XCircle, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { ShieldCheck, Search, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { fetchTasks, createVerificationRecord, updateTaskStatus, updateReportStatus, createNotification, createAuditLog } from '@/services/api';
-import { formatDateTime, timeAgo } from '@/lib/utils';
-import type { Task } from '@/types';
+import { timeAgo } from '@/lib/utils';
+import type { Evidence, Task } from '@/types';
+
+function latestEvidence(task: Task, evidenceType: Evidence['evidence_type']) {
+  return (task.evidence || [])
+    .filter((evidence) => evidence.evidence_type === evidenceType)
+    .sort((first, second) => new Date(second.submitted_at).getTime() - new Date(first.submitted_at).getTime())[0];
+}
 
 export function EvidenceVerificationPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [decisionModal, setDecisionModal] = useState<{ task: Task; decision: 'approved' | 'rejected' | 'resubmission_requested' } | null>(null);
@@ -39,12 +46,13 @@ export function EvidenceVerificationPage() {
   const handleDecision = async () => {
     if (!user || !decisionModal) return;
     setActionLoading(decisionModal.task.id);
+    setActionError(null);
     try {
       const { task, decision } = decisionModal;
-      const beforeEvidence = task.evidence?.find(e => e.evidence_type === 'before');
-      const afterEvidence = task.evidence?.find(e => e.evidence_type === 'after');
+      const beforeEvidence = latestEvidence(task, 'before');
+      const afterEvidence = latestEvidence(task, 'after');
       const hashMatch = beforeEvidence?.file_hash && afterEvidence?.file_hash
-        ? beforeEvidence.file_hash !== afterEvidence.file_hash
+        ? beforeEvidence.file_hash === afterEvidence.file_hash
         : null;
 
       await createVerificationRecord({
@@ -54,7 +62,7 @@ export function EvidenceVerificationPage() {
         comments: comments || undefined,
         before_hash: beforeEvidence?.file_hash || undefined,
         after_hash: afterEvidence?.file_hash || undefined,
-        hash_match: hashMatch || undefined,
+        hash_match: hashMatch ?? undefined,
       });
 
       if (decision === 'approved') {
@@ -87,7 +95,7 @@ export function EvidenceVerificationPage() {
       setComments('');
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process decision');
+      setActionError(err instanceof Error ? err.message : 'Failed to process decision');
     } finally {
       setActionLoading(null);
     }
@@ -106,6 +114,8 @@ export function EvidenceVerificationPage() {
         title="Evidence Verification"
         description="Review before-and-after evidence submitted by volunteers"
       />
+
+      {actionError && <p role="alert" className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{actionError}</p>}
 
       <div className="card p-4 mb-4 bg-background border-border">
         <div className="flex items-start gap-3">
@@ -135,8 +145,8 @@ export function EvidenceVerificationPage() {
       ) : (
         <div className="space-y-4">
           {filtered.map((task) => {
-            const beforeEvidence = task.evidence?.find(e => e.evidence_type === 'before');
-            const afterEvidence = task.evidence?.find(e => e.evidence_type === 'after');
+            const beforeEvidence = latestEvidence(task, 'before');
+            const afterEvidence = latestEvidence(task, 'after');
             return (
               <Card key={task.id}>
                 <CardBody>
@@ -155,33 +165,13 @@ export function EvidenceVerificationPage() {
                     <div>
                       <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Before</p>
                       {beforeEvidence ? (
-                        <div className="rounded-lg overflow-hidden border border-border">
-                          {beforeEvidence.file_url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
-                            <img src={beforeEvidence.file_url} alt="Before" className="w-full h-32 object-cover" />
-                          ) : (
-                            <video src={beforeEvidence.file_url} className="w-full h-32 object-cover" controls />
-                          )}
-                          <div className="p-2">
-                            <p className="text-xs text-muted-foreground">{timeAgo(beforeEvidence.submitted_at)}</p>
-                            {beforeEvidence.file_hash && <p className="text-xs text-muted-foreground font-mono truncate">Hash: {beforeEvidence.file_hash.substring(0, 16)}...</p>}
-                          </div>
-                        </div>
+                        <EvidencePreview evidence={beforeEvidence} label="Before" />
                       ) : <p className="text-sm text-muted-foreground">No before evidence</p>}
                     </div>
                     <div>
                       <p className="text-xs font-medium text-muted-foreground uppercase mb-2">After</p>
                       {afterEvidence ? (
-                        <div className="rounded-lg overflow-hidden border border-border">
-                          {afterEvidence.file_url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
-                            <img src={afterEvidence.file_url} alt="After" className="w-full h-32 object-cover" />
-                          ) : (
-                            <video src={afterEvidence.file_url} className="w-full h-32 object-cover" controls />
-                          )}
-                          <div className="p-2">
-                            <p className="text-xs text-muted-foreground">{timeAgo(afterEvidence.submitted_at)}</p>
-                            {afterEvidence.file_hash && <p className="text-xs text-muted-foreground font-mono truncate">Hash: {afterEvidence.file_hash.substring(0, 16)}...</p>}
-                          </div>
-                        </div>
+                        <EvidencePreview evidence={afterEvidence} label="After" />
                       ) : <p className="text-sm text-muted-foreground">No after evidence</p>}
                     </div>
                   </div>
@@ -235,6 +225,38 @@ export function EvidenceVerificationPage() {
           <textarea value={comments} onChange={(e) => setComments(e.target.value)} className="input min-h-[80px] resize-y" placeholder="Add your review comments..." />
         </div>
       </ConfirmDialog>
+    </div>
+  );
+}
+
+function EvidencePreview({ evidence, label }: { evidence: Evidence; label: string }) {
+  const [previewUnavailable, setPreviewUnavailable] = useState(false);
+  const fileName = evidence.file_name || 'Evidence file';
+  const isImage = /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(fileName)
+    || evidence.file_url.startsWith('data:image/');
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
+      {previewUnavailable ? (
+        <div role="status" className="flex min-h-40 items-center justify-center bg-muted/40 px-4 text-center text-sm text-muted-foreground">
+          Preview unavailable. Ask the volunteer to upload this evidence again.
+        </div>
+      ) : isImage ? (
+        <a href={evidence.file_url} target="_blank" rel="noreferrer" aria-label={`Open ${label.toLowerCase()} evidence image`}>
+          <img onError={() => setPreviewUnavailable(true)} src={evidence.file_url} alt={`${label} evidence`} className="max-h-[360px] min-h-48 w-full bg-black/5 object-contain" />
+        </a>
+      ) : (
+        <video onError={() => setPreviewUnavailable(true)} src={evidence.file_url} className="max-h-[360px] min-h-48 w-full bg-black object-contain" controls preload="metadata" />
+      )}
+      <div className="space-y-1 border-t border-border p-3">
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 truncate text-xs font-medium text-foreground" title={fileName}>{fileName}</p>
+          <p className="shrink-0 text-xs text-muted-foreground">{timeAgo(evidence.submitted_at)}</p>
+        </div>
+        {evidence.notes && <p className="text-sm text-muted-foreground">{evidence.notes}</p>}
+        {evidence.file_hash && <p className="truncate font-mono text-[11px] text-muted-foreground">SHA-256: {evidence.file_hash}</p>}
+        {!isImage && <a href={evidence.file_url} target="_blank" rel="noreferrer" className="inline-flex text-xs font-medium text-primary hover:underline">Open video in new tab</a>}
+      </div>
     </div>
   );
 }

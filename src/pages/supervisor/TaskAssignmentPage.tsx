@@ -1,34 +1,39 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ClipboardCheck, Search, UserCheck, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ClipboardCheck, Search, UserCheck, AlertCircle, CheckCircle2, Clock3, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
-import { fetchReports, fetchVolunteers, createTask, assignTask, updateReportStatus, createNotification, createAuditLog } from '@/services/api';
+import { fetchReports, fetchVolunteers, createTask, assignTask, updateReportStatus, createNotification, createAuditLog, fetchVolunteerTaskRequests, reviewVolunteerTaskRequest } from '@/services/api';
 import { formatDate } from '@/lib/utils';
 import { matchVolunteersToTask } from '@/lib/volunteerMatching';
-import type { Report, Volunteer } from '@/types';
+import type { Report, Volunteer, VolunteerTaskRequest } from '@/types';
 
 export function TaskAssignmentPage() {
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [requests, setRequests] = useState<VolunteerTaskRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [assignModal, setAssignModal] = useState<Report | null>(null);
   const [selectedVolunteerId, setSelectedVolunteerId] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [r, v] = await Promise.all([fetchReports(), fetchVolunteers()]);
-      setReports(r.filter(rpt => ['verified', 'prioritized'].includes(rpt.status)));
+      const [r, v, taskRequests] = await Promise.all([fetchReports(), fetchVolunteers(), fetchVolunteerTaskRequests()]);
+      const pendingRequestReportIds = new Set(taskRequests.filter((request) => request.status === 'pending').map((request) => request.report_id));
+      setReports(r.filter((report) => ['verified', 'prioritized'].includes(report.status) && !pendingRequestReportIds.has(report.id)));
       setVolunteers(v.filter(vol => vol.is_verified && vol.verification_status === 'verified'));
+      setRequests(taskRequests.filter((request) => request.status === 'pending'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
@@ -100,6 +105,19 @@ export function TaskAssignmentPage() {
     }
   };
 
+  const handleReviewRequest = async (request: VolunteerTaskRequest, approve: boolean) => {
+    setReviewingRequestId(request.id);
+    setError(null);
+    try {
+      await reviewVolunteerTaskRequest(request.id, approve);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to review volunteer request');
+    } finally {
+      setReviewingRequestId(null);
+    }
+  };
+
   const filtered = reports.filter(r =>
     !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.report_id.toLowerCase().includes(search.toLowerCase())
   );
@@ -111,8 +129,51 @@ export function TaskAssignmentPage() {
     <div>
       <PageHeader
         title="Task Assignment"
-        description="Assign verified reports to suitable volunteers"
+        description="Review volunteer interest and assign verified community reports"
       />
+
+      <section className="mb-6 rounded-xl border border-border bg-card shadow-soft">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
+          <div>
+            <h2 className="flex items-center gap-2 font-semibold text-foreground"><Clock3 className="h-4 w-4 text-amber-600" /> Volunteer requests</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Review volunteers who asked to take on a community report.</p>
+          </div>
+          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">{requests.length} pending</span>
+        </div>
+        {requests.length === 0 ? (
+          <p className="px-4 py-5 text-sm text-muted-foreground sm:px-5">No volunteer requests need review.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {requests.map((request) => {
+              const report = request.report;
+              if (!report) return null;
+              const volunteerName = request.volunteer?.full_name || request.volunteer?.email || 'Volunteer';
+              return (
+                <article key={request.id} className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">{report.report_id}</span>
+                      <PriorityBadge level={report.priority_level} />
+                    </div>
+                    <p className="mt-2 font-semibold text-foreground">{report.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{volunteerName} requested this assignment · {formatDate(request.created_at)}</p>
+                    {request.message && <p className="mt-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">“{request.message}”</p>}
+                    <Link to={`/app/reports/${report.id}`} className="mt-2 inline-flex text-xs font-medium text-primary hover:underline">Review citizen report</Link>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <button type="button" onClick={() => void handleReviewRequest(request, false)} disabled={reviewingRequestId === request.id} className="btn-secondary text-sm disabled:opacity-50">
+                      <XCircle className="h-4 w-4" /> Decline
+                    </button>
+                    <button type="button" onClick={() => void handleReviewRequest(request, true)} disabled={reviewingRequestId === request.id} className="btn-primary text-sm disabled:opacity-50">
+                      <CheckCircle2 className="h-4 w-4" /> {reviewingRequestId === request.id ? 'Reviewing...' : 'Approve & assign'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -170,7 +231,7 @@ export function TaskAssignmentPage() {
               <option value="">Select a volunteer...</option>
               {volunteerMatches.map(match => (
                 <option key={match.volunteer.id} value={match.volunteer.user_id}>
-                  {match.volunteer.profile?.full_name} — {match.score}% match · {match.volunteer.current_workload}/{match.volunteer.max_workload} tasks · {match.distance === null ? 'distance unavailable' : `${match.distance.toFixed(1)} km`}
+                  {match.volunteer.profile?.full_name} — {match.score}% match · {match.volunteer.current_workload}/{match.volunteer.max_workload} tasks · {match.availabilityStatus === 'schedule_unset' ? 'schedule not recorded' : 'available now'} · {match.distance === null ? 'distance unavailable' : `${match.distance.toFixed(1)} km`}
                 </option>
               ))}
             </select>

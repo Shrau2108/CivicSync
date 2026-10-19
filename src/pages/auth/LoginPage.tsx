@@ -14,7 +14,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [demoRole, setDemoRole] = useState<'citizen' | 'supervisor' | 'volunteer' | 'admin'>('citizen');
+  const [demoRole] = useState<'citizen' | 'supervisor' | 'volunteer' | 'admin'>('citizen');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

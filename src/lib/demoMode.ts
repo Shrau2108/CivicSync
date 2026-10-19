@@ -1,11 +1,46 @@
 import type {
-  Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, Volunteer,
+  Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, VerificationRecord, Volunteer, VolunteerTaskRequest,
 } from '@/types';
 
 const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 const hasDemoSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
 export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !hasSupabaseConfig || hasDemoSession;
 const STORAGE_KEY = 'civicsync-demo-store-v1';
+const DEMO_MEDIA_DATABASE = 'civicsync-demo-media-v1';
+
+function openDemoMediaDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DEMO_MEDIA_DATABASE, 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore('evidence');
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Could not open local evidence storage.'));
+  });
+}
+
+async function saveDemoEvidenceFile(key: string, file: File): Promise<void> {
+  const database = await openDemoMediaDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction('evidence', 'readwrite');
+    transaction.objectStore('evidence').put(file, key);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error || new Error('Could not save evidence locally.'));
+    transaction.onabort = () => reject(transaction.error || new Error('Evidence storage was interrupted.'));
+  }).finally(() => database.close());
+}
+
+async function loadDemoEvidenceFile(key: string): Promise<Blob | null> {
+  const database = await openDemoMediaDatabase();
+  return new Promise<Blob | null>((resolve, reject) => {
+    const transaction = database.transaction('evidence', 'readonly');
+    const request = transaction.objectStore('evidence').get(key);
+    request.onsuccess = () => resolve(request.result instanceof Blob ? request.result : null);
+    request.onerror = () => reject(request.error || new Error('Could not load local evidence.'));
+    transaction.oncomplete = () => database.close();
+    transaction.onerror = () => database.close();
+  });
+}
 
 const now = new Date().toISOString();
 const demoProfiles: Profile[] = [
@@ -36,12 +71,20 @@ const seedReport: Report = {
   category: demoCategories[1], reporter: demoProfiles[0], location: demoLocation,
 };
 
-type DemoStore = { reports: Report[]; tasks: Task[]; volunteers: Volunteer[] };
+type DemoStore = {
+  reports: Report[];
+  tasks: Task[];
+  volunteers: Volunteer[];
+  taskRequests: VolunteerTaskRequest[];
+  verificationRecords: VerificationRecord[];
+};
 
 function initialStore(): DemoStore {
   return {
     reports: [seedReport],
     tasks: [],
+    taskRequests: [],
+    verificationRecords: [],
     volunteers: [{
       id: 'demo-volunteer-record', user_id: 'demo-volunteer', bio: 'Ready to help improve Demo City.', service_area: 'Central Ward',
       current_workload: 0, max_workload: 5, completed_tasks: 0, rating: 4.9, total_ratings: 12,
@@ -54,7 +97,14 @@ function initialStore(): DemoStore {
 function readStore(): DemoStore {
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) as DemoStore : initialStore();
+    if (!stored) return initialStore();
+    const store = JSON.parse(stored) as Partial<DemoStore>;
+    return {
+      ...initialStore(),
+      ...store,
+      taskRequests: store.taskRequests || [],
+      verificationRecords: store.verificationRecords || [],
+    };
   } catch {
     return initialStore();
   }
@@ -78,6 +128,10 @@ function syncDemoVolunteerWorkload(store: DemoStore, volunteerId: string): void 
 
 export function demoProfile(id: string): Profile {
   return demoProfiles.find((profile) => profile.id === id) || demoProfiles[0];
+}
+
+export function demoAllProfiles(): Profile[] {
+  return demoProfiles;
 }
 
 export function demoRoleProfile(role: 'citizen' | 'supervisor' | 'volunteer' | 'admin'): Profile {
@@ -163,6 +217,119 @@ export function demoTasksForVolunteer(volunteerId: string): Task[] {
 export function demoTaskById(id: string): Task | null {
   const task = demoTasks().find((item) => item.id === id);
   return task || null;
+}
+
+export async function demoHydrateTaskMedia(tasks: Task[]): Promise<Task[]> {
+  return Promise.all(tasks.map(async (task) => ({
+    ...task,
+    evidence: await Promise.all((task.evidence || []).map(async (evidence) => {
+      if (!evidence.file_url.startsWith('demo-media:')) return evidence;
+      const media = await loadDemoEvidenceFile(evidence.id);
+      return media ? { ...evidence, file_url: URL.createObjectURL(media) } : evidence;
+    })),
+  })));
+}
+
+export function demoVolunteerTaskRequests(volunteerId?: string): VolunteerTaskRequest[] {
+  const store = readStore();
+  return store.taskRequests
+    .filter((request) => !volunteerId || request.volunteer_id === volunteerId)
+    .map((request) => ({
+      ...request,
+      report: store.reports.find((report) => report.id === request.report_id)
+        ? enrichReport(store.reports.find((report) => report.id === request.report_id)!)
+        : undefined,
+      volunteer: demoProfile(request.volunteer_id),
+    }));
+}
+
+export function demoSubmitVolunteerTaskRequest(reportId: string, message: string): VolunteerTaskRequest {
+  const store = readStore();
+  const report = store.reports.find((item) => item.id === reportId);
+  const volunteer = store.volunteers.find((item) => item.user_id === demoRoleProfile('volunteer').id);
+  if (!report || !['verified', 'prioritized'].includes(report.status) || report.is_duplicate || report.assigned_volunteer_id) {
+    throw new Error('This report is no longer available for volunteer requests.');
+  }
+  if (!volunteer?.is_verified || volunteer.verification_status !== 'verified') {
+    throw new Error('A verified volunteer profile is required to request a task.');
+  }
+  if (store.taskRequests.some((request) => request.report_id === reportId && request.volunteer_id === volunteer.user_id && request.status === 'pending')) {
+    throw new Error('You already have a pending request for this report.');
+  }
+  const createdAt = new Date().toISOString();
+  const request: VolunteerTaskRequest = {
+    id: `demo-request-${Date.now()}`,
+    report_id: reportId,
+    volunteer_id: volunteer.user_id,
+    message: message.trim() || null,
+    status: 'pending',
+    reviewer_id: null,
+    reviewed_at: null,
+    task_id: null,
+    created_at: createdAt,
+    updated_at: createdAt,
+  };
+  store.taskRequests.unshift(request);
+  writeStore(store);
+  return { ...request, report: enrichReport(report), volunteer: demoProfile(volunteer.user_id) };
+}
+
+export function demoReviewVolunteerTaskRequest(requestId: string, approved: boolean, reviewerId: string): VolunteerTaskRequest {
+  const store = readStore();
+  const request = store.taskRequests.find((item) => item.id === requestId && item.status === 'pending');
+  if (!request) throw new Error('This volunteer request has already been reviewed.');
+  const report = store.reports.find((item) => item.id === request.report_id);
+  if (!report) throw new Error('The citizen report could not be found.');
+
+  if (!approved) {
+    request.status = 'rejected';
+    request.reviewer_id = reviewerId;
+    request.reviewed_at = new Date().toISOString();
+    request.updated_at = request.reviewed_at;
+    writeStore(store);
+    return { ...request, report: enrichReport(report), volunteer: demoProfile(request.volunteer_id) };
+  }
+
+  if (!['verified', 'prioritized'].includes(report.status) || report.is_duplicate || report.assigned_volunteer_id) {
+    throw new Error('This report is no longer eligible for assignment.');
+  }
+  if (store.tasks.some((item) => item.report_id === report.id)) {
+    throw new Error('A task already exists for this report.');
+  }
+  const volunteer = store.volunteers.find((item) => item.user_id === request.volunteer_id);
+  if (!volunteer?.is_verified || volunteer.verification_status !== 'verified' || volunteer.current_workload >= volunteer.max_workload) {
+    throw new Error('This volunteer is no longer eligible for the task.');
+  }
+  const task = demoCreateTask({
+    report_id: report.id,
+    title: report.title,
+    description: report.description,
+    category_id: report.category_id || undefined,
+    priority_level: report.priority_level || undefined,
+    priority_score: report.priority_score || 0,
+    affected_people: report.affected_people,
+    created_by: reviewerId,
+  });
+  demoAssignTask(task.id, request.volunteer_id, reviewerId);
+
+  const updatedStore = readStore();
+  const updatedRequest = updatedStore.taskRequests.find((item) => item.id === requestId)!;
+  const reviewedAt = new Date().toISOString();
+  updatedRequest.status = 'approved';
+  updatedRequest.reviewer_id = reviewerId;
+  updatedRequest.reviewed_at = reviewedAt;
+  updatedRequest.updated_at = reviewedAt;
+  updatedRequest.task_id = task.id;
+  updatedStore.taskRequests.forEach((item) => {
+    if (item.report_id === report.id && item.status === 'pending' && item.id !== requestId) {
+      item.status = 'rejected';
+      item.reviewer_id = reviewerId;
+      item.reviewed_at = reviewedAt;
+      item.updated_at = reviewedAt;
+    }
+  });
+  writeStore(updatedStore);
+  return { ...updatedRequest, report: enrichReport(report), volunteer: demoProfile(request.volunteer_id) };
 }
 
 function enrichTask(task: Task): Task {
@@ -253,6 +420,71 @@ export function demoDeclineTask(taskId: string, volunteerId: string, reason: str
     syncDemoVolunteerWorkload(store, volunteerId);
   }
   writeStore(store);
+}
+
+export async function demoUploadEvidence(
+  taskId: string,
+  volunteerId: string,
+  file: File,
+  evidenceType: 'before' | 'after',
+  notes?: string
+): Promise<Evidence> {
+  const store = readStore();
+  const task = store.tasks.find((item) => item.id === taskId);
+  const assignment = task?.assignments?.find((item) => item.volunteer_id === volunteerId && item.status === 'accepted');
+  if (!task || !assignment || !['accepted', 'in_progress'].includes(task.status)) {
+    throw new Error('Only the assigned volunteer can upload evidence for an active task.');
+  }
+
+  const evidenceId = `demo-evidence-${Date.now()}`;
+  const evidence: Evidence = {
+    id: evidenceId,
+    task_id: taskId,
+    volunteer_id: volunteerId,
+    evidence_type: evidenceType,
+    file_url: `demo-media:${evidenceId}`,
+    file_name: file.name,
+    file_size: file.size,
+    file_hash: null,
+    storage_path: null,
+    notes: notes || null,
+    submitted_at: new Date().toISOString(),
+  };
+  await saveDemoEvidenceFile(evidence.id, file);
+  task.evidence = [...(task.evidence || []), evidence];
+  task.updated_at = evidence.submitted_at;
+  writeStore(store);
+  return { ...evidence, file_url: URL.createObjectURL(file) };
+}
+
+export function demoCreateVerificationRecord(input: {
+  task_id: string;
+  verifier_id: string;
+  decision: string;
+  comments?: string;
+  before_hash?: string;
+  after_hash?: string;
+  hash_match?: boolean;
+}): VerificationRecord {
+  const store = readStore();
+  const record: VerificationRecord = {
+    id: `demo-verification-${Date.now()}`,
+    task_id: input.task_id,
+    verifier_id: input.verifier_id,
+    decision: input.decision as VerificationRecord['decision'],
+    comments: input.comments || null,
+    before_hash: input.before_hash || null,
+    after_hash: input.after_hash || null,
+    hash_match: input.hash_match ?? null,
+    created_at: new Date().toISOString(),
+  };
+  store.verificationRecords.unshift(record);
+  writeStore(store);
+  return record;
+}
+
+export function demoVerificationRecords(taskId: string): VerificationRecord[] {
+  return readStore().verificationRecords.filter((record) => record.task_id === taskId);
 }
 
 export function demoReset(): void { sessionStorage.removeItem(STORAGE_KEY); }

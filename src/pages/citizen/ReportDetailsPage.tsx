@@ -1,17 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
-  ArrowLeft, MapPin, Calendar, Users, FileText, Image as ImageIcon,
-  CheckCircle2, AlertCircle, Clock, User, Tag, MessageSquare,
+  ArrowLeft, MapPin, CheckCircle2, MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
-import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { fetchReportById, fetchFeedbackForReport } from '@/services/api';
 import { supabase } from '@/lib/supabase';
-import { formatDateTime, timeAgo, REPORT_STATUS_LABELS } from '@/lib/utils';
+import { formatDateTime, timeAgo } from '@/lib/utils';
 import type { Report, Feedback } from '@/types';
 
 const STATUS_FLOW: { status: string; label: string }[] = [

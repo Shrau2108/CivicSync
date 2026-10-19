@@ -69,8 +69,8 @@ export function CommunityMap({
   const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
   const focusedReportAppliedRef = useRef<string | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [categories, setCategories] = useState<ReportCategory[]>([]);
@@ -90,13 +90,11 @@ export function CommunityMap({
   const [mapReady, setMapReady] = useState(false);
   const [mapsLibraryReady, setMapsLibraryReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-
   const [citizenLocation, setCitizenLocation] = useState<{lat: number, lng: number, accuracy: number} | null>(null);
   const [locationErrorMsg, setLocationErrorMsg] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'denied' | 'unavailable' | 'error'>('idle');
-  const citizenMarkerRef = useRef<any>(null);
-  const accuracyCircleRef = useRef<any>(null);
+  const citizenMarkerRef = useRef<google.maps.Marker | null>(null);
+  const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const initialCenterDoneRef = useRef(false);
 
@@ -133,7 +131,6 @@ export function CommunityMap({
 
   useEffect(() => {
     if (!apiKey) {
-      setMapLoaded(false);
       setMapReady(false);
       setMapsLibraryReady(false);
       return;
@@ -141,7 +138,7 @@ export function CommunityMap({
 
     let cancelled = false;
     const prepareMapLibrary = () => {
-      const maps = (window as any).google?.maps;
+      const maps = window.google?.maps;
       if (!maps?.importLibrary) {
         setMapError('Google Maps failed to initialize. Check the API configuration.');
         return;
@@ -149,7 +146,6 @@ export function CommunityMap({
       maps.importLibrary('maps')
         .then(() => {
           if (cancelled) return;
-          setMapLoaded(true);
           setMapReady(true);
           setMapsLibraryReady(true);
         })
@@ -161,7 +157,7 @@ export function CommunityMap({
     const scriptId = 'civicsync-google-maps-script';
     const script = document.getElementById(scriptId) as HTMLScriptElement | null;
 
-    if ((window as any).google && (window as any).google.maps) {
+    if (window.google?.maps) {
       prepareMapLibrary();
       return () => { cancelled = true; };
     }
@@ -245,7 +241,7 @@ export function CommunityMap({
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current || !citizenLocation) return;
     
-    const googleMaps = (window as any).google;
+    const googleMaps = window.google;
     const map = mapInstanceRef.current;
     const position = { lat: citizenLocation.lat, lng: citizenLocation.lng };
 
@@ -284,8 +280,8 @@ export function CommunityMap({
       }
     } else {
       citizenMarkerRef.current.setPosition(position);
-      accuracyCircleRef.current.setCenter(position);
-      accuracyCircleRef.current.setRadius(citizenLocation.accuracy);
+      accuracyCircleRef.current?.setCenter(position);
+      accuracyCircleRef.current?.setRadius(citizenLocation.accuracy);
     }
   }, [citizenLocation, mapReady]);
 
@@ -341,7 +337,7 @@ export function CommunityMap({
   }, [focusReportId, reports]);
 
   useEffect(() => {
-    const googleMaps = (window as any).google;
+    const googleMaps = window.google;
     if (!mapReady || !mapsLibraryReady || !apiKey || !mapContainerRef.current || !googleMaps) return;
 
     if (!mapInstanceRef.current) {
@@ -406,7 +402,7 @@ export function CommunityMap({
       reports: group.reports,
     }));
 
-    const bounds = new (window as any).google.maps.LatLngBounds();
+    const bounds = new google.maps.LatLngBounds();
 
     clusterGroups.forEach((group) => {
       const center = { lat: group.lat, lng: group.lng };
@@ -418,7 +414,7 @@ export function CommunityMap({
         map,
         title: clusterCount > 1 ? `${clusterCount} reports near this location` : report.title,
         icon: {
-          path: clusterCount > 1 ? (window as any).google.maps.SymbolPath.CIRCLE : (window as any).google.maps.SymbolPath.CIRCLE,
+          path: google.maps.SymbolPath.CIRCLE,
           scale: clusterCount > 1 ? 14 : 11,
           fillColor: color,
           fillOpacity: 1,
@@ -436,7 +432,7 @@ export function CommunityMap({
           return;
         }
 
-        const newBounds = new (window as any).google.maps.LatLngBounds();
+        const newBounds = new google.maps.LatLngBounds();
         group.reports.forEach((item: Report) => {
           if (item.location) {
             newBounds.extend({ lat: item.location.latitude, lng: item.location.longitude });
@@ -451,7 +447,7 @@ export function CommunityMap({
 
     volunteerMarkers.forEach((volunteer) => {
       const position = { lat: volunteer.latitude, lng: volunteer.longitude };
-      const marker = new (window as any).google.maps.Marker({
+      const marker = new google.maps.Marker({
         position,
         map,
         title: `${volunteer.name}${volunteer.score === undefined ? '' : ` · ${volunteer.score.toFixed(1)}% match`}`,

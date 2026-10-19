@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, MapPin, Clock, Users, FileText, Tag, Calendar,
-  CheckCircle2, XCircle, Upload, Loader2, AlertCircle, Image as ImageIcon,
-  MessageSquare, History,
+  ArrowLeft, MapPin, Clock, Users, FileText, Calendar,
+  CheckCircle2, XCircle, Upload, Loader2, AlertCircle,
+  History,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
@@ -31,7 +31,7 @@ export function TaskDetailsPage() {
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
-  const [declineReason, setDeclineReason] = useState('');
+  const [declineReason] = useState('');
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [evidenceType, setEvidenceType] = useState<'before' | 'after'>('before');
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
@@ -134,7 +134,6 @@ export function TaskDetailsPage() {
 
   const myAssignment = task.assignments?.find(a => a.volunteer_id === user?.id);
   const canAccept = myAssignment?.status === 'assigned';
-  const canDecline = myAssignment?.status === 'assigned';
   const canStartWork = task.status === 'accepted' && myAssignment?.status === 'accepted';
   const canUploadEvidence = task.status === 'in_progress' || task.status === 'accepted';
   const beforeEvidence = task.evidence?.filter(e => e.evidence_type === 'before') || [];
@@ -398,9 +397,11 @@ export function TaskDetailsPage() {
 }
 
 function EvidenceCard({ evidence }: { evidence: Evidence }) {
+  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(evidence.file_name || evidence.file_url);
+
   return (
     <div className="rounded-lg overflow-hidden border border-border">
-      {evidence.file_url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+      {isImage ? (
         <img src={evidence.file_url} alt={evidence.file_name || 'Evidence'} className="w-full h-24 object-cover" />
       ) : (
         <video src={evidence.file_url} className="w-full h-24 object-cover" controls />

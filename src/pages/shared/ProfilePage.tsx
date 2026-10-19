@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { User, Mail, Phone, Save, MapPin, Plus, X, Star } from 'lucide-react';
+import { User, Mail, Phone, Save, Plus, X, Star } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { RoleBadge } from '@/components/ui/Badge';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
-import { LoadingState, ErrorState } from '@/components/ui/States';
-import { updateProfile, fetchVolunteerByUserId, createVolunteer, updateVolunteer, addVolunteerSkill, removeVolunteerSkill } from '@/services/api';
+import { LoadingState } from '@/components/ui/States';
+import { updateProfile, fetchVolunteerByUserId, addVolunteerSkill, removeVolunteerSkill } from '@/services/api';
 import type { Volunteer } from '@/types';
 
 export function ProfilePage() {

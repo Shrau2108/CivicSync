@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Save, Brain, Map, Bell } from 'lucide-react';
+import { Save, Brain, Map } from 'lucide-react';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';

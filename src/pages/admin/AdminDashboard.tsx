@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, ClipboardList, CheckSquare, AlertTriangle, Clock, TrendingUp, Activity } from 'lucide-react';
+import { Users, FileText, ClipboardList, CheckSquare, AlertTriangle, Activity, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatCard, LoadingState, ErrorState } from '@/components/ui/States';
 import { Card, CardBody } from '@/components/ui/Card';
 import { fetchAllProfiles, fetchReports, fetchTasks, fetchVolunteers, fetchAuditLogs } from '@/services/api';
-import { formatDate, timeAgo } from '@/lib/utils';
+import { timeAgo } from '@/lib/utils';
 import type { Profile, Report, Task, Volunteer, AuditLog } from '@/types';
 
 export function AdminDashboard() {
@@ -72,6 +72,30 @@ export function AdminDashboard() {
         <StatCard label="Verified Volunteers" value={verifiedVolunteers} icon={<Users className="w-5 h-5" />} color="primary" />
         <StatCard label="Total Tasks" value={tasks.length} icon={<ClipboardList className="w-5 h-5" />} color="navy" />
       </div>
+
+      <section className="mb-6">
+        <h2 className="mb-3 text-base font-semibold text-foreground">Administration</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Review incoming reports', detail: `${reports.filter((report) => ['submitted', 'under_review'].includes(report.status)).length} reports need review`, to: '/app/supervisor/incoming', icon: FileText },
+            { label: 'Assign and review tasks', detail: 'Volunteer requests and verified reports', to: '/app/supervisor/assignment', icon: ClipboardList },
+            { label: 'Verify volunteer evidence', detail: `${tasks.filter((task) => task.status === 'evidence_submitted').length} submissions pending`, to: '/app/admin/verification', icon: ShieldCheck },
+            { label: 'Manage volunteers', detail: `${volunteers.length} volunteer profiles`, to: '/app/admin/volunteers', icon: UserCheck },
+          ].map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link key={action.to} to={action.to} className="group flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-primary/40 hover:bg-muted/30">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-foreground">{action.label}</span>
+                  <span className="mt-1 block truncate text-xs text-muted-foreground">{action.detail}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-primary" />
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div>

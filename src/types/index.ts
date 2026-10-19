@@ -23,7 +23,7 @@ export type NotificationCategory =
   | 'report_submitted' | 'report_reviewed' | 'priority_updated' | 'task_assigned'
   | 'task_accepted' | 'task_declined' | 'task_reassigned' | 'status_changed'
   | 'evidence_submitted' | 'evidence_approved' | 'evidence_rejected'
-  | 'report_resolved' | 'feedback_requested';
+  | 'report_resolved' | 'feedback_requested' | 'task_request_received' | 'task_request_reviewed';
 
 export interface Profile {
   id: string;
@@ -209,6 +209,21 @@ export interface TaskAssignment {
   decline_reason: string | null;
   created_at: string;
   updated_at: string;
+  volunteer?: Profile;
+}
+
+export interface VolunteerTaskRequest {
+  id: string;
+  report_id: string;
+  volunteer_id: string;
+  message: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewer_id: string | null;
+  reviewed_at: string | null;
+  task_id: string | null;
+  created_at: string;
+  updated_at: string;
+  report?: Report;
   volunteer?: Profile;
 }
 

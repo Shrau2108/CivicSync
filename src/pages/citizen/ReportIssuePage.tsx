@@ -1,20 +1,12 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, FileText, CheckCircle2, ArrowRight, ArrowLeft, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, MapPin, CheckCircle2, ArrowRight, ArrowLeft, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { fetchCategories, createReport, createReportLocation, uploadReportMedia } from '@/services/api';
 import { cn } from '@/lib/utils';
 import type { ReportCategory } from '@/types';
-
-const CATEGORIES = [
-  { name: 'Garbage', icon: 'Trash2' }, { name: 'Road Damage', icon: 'Construction' },
-  { name: 'Streetlight', icon: 'Lightbulb' }, { name: 'Water Leakage', icon: 'Droplets' },
-  { name: 'Medical', icon: 'Stethoscope' }, { name: 'Flood Relief', icon: 'Waves' },
-  { name: 'Education', icon: 'GraduationCap' }, { name: 'Food', icon: 'UtensilsCrossed' },
-  { name: 'Shelter', icon: 'Home' }, { name: 'Other', icon: 'CircleHelp' },
-];
 
 const SEVERITY_OPTIONS = [
   { value: 'low', label: 'Low', desc: 'Minor inconvenience' },
@@ -161,7 +153,7 @@ export function ReportIssuePage() {
 
       for (let i = 0; i < files.length; i++) {
         setUploadProgress(Math.round(((i / files.length) * 100)));
-        await uploadReportMedia(reportId, files[i], user.id);
+        await uploadReportMedia(reportId, files[i]);
       }
       setUploadProgress(100);
 

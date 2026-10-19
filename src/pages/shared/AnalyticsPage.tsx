@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BarChart3, TrendingUp, FileText, CheckCircle2, Clock, Star } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, CheckCircle2, Star } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend

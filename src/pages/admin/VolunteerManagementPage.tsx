@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserCheck, Search, Star, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
+import { UserCheck, Search, Star, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody } from '@/components/ui/Card';

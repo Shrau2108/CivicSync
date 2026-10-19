@@ -39,7 +39,7 @@ export function isVolunteerEligibleForTask(
 ): boolean {
   if (!volunteer.is_verified || volunteer.verification_status !== 'verified') return false;
   if (volunteer.current_workload >= volunteer.max_workload) return false;
-  if (getVolunteerAvailability(volunteer, now) !== 'available') return false;
+  if (getVolunteerAvailability(volunteer, now) === 'unavailable') return false;
   if (requiredSkills.length > 0 && calculateSkillMatch(requiredSkills, (volunteer.skills || []).map((skill) => skill.skill)) < 100) return false;
   return true;
 }

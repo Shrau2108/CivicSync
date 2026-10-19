@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Search, ShieldCheck, UserCog } from 'lucide-react';
+import { Users, Search, UserCog } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { RoleBadge } from '@/components/ui/Badge';
