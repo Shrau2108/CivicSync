@@ -61,6 +61,23 @@ export async function fetchReports(filters?: {
   return reports as unknown as Report[];
 }
 
+export async function fetchAllReports(): Promise<Report[]> {
+  if (DEMO_MODE) return demoReports();
+  const pageSize = 1000;
+  const reports: Report[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*, category:report_categories(*), location:report_locations(*)')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data || []) as unknown as Report[];
+    reports.push(...page);
+    if (page.length < pageSize) return reports;
+  }
+}
+
 export async function fetchReportById(id: string): Promise<Report | null> {
   if (DEMO_MODE) return demoReportById(id);
   const { data, error } = await supabase
@@ -408,6 +425,29 @@ export async function fetchTasks(filters?: { status?: string }): Promise<Task[]>
   const { data, error } = await query;
   if (error) throw error;
   return data as unknown as Task[];
+}
+
+export async function fetchAllTasks(): Promise<Task[]> {
+  if (DEMO_MODE) return demoHydrateTaskMedia(demoTasks());
+  const pageSize = 1000;
+  const tasks: Task[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        report:reports(*),
+        category:report_categories(*),
+        assignments:task_assignments(*, volunteer:profiles!task_assignments_volunteer_id_fkey(*)),
+        evidence:evidence(*)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data || []) as unknown as Task[];
+    tasks.push(...page);
+    if (page.length < pageSize) return tasks;
+  }
 }
 
 export async function fetchTaskById(id: string): Promise<Task | null> {
@@ -789,6 +829,23 @@ export async function fetchAuditLogs(limit = 50): Promise<AuditLog[]> {
   return data as unknown as AuditLog[];
 }
 
+export async function fetchAllAuditLogs(): Promise<AuditLog[]> {
+  if (DEMO_MODE) return [];
+  const pageSize = 1000;
+  const logs: AuditLog[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*, actor:profiles!audit_logs_actor_id_fkey(*)')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data || []) as unknown as AuditLog[];
+    logs.push(...page);
+    if (page.length < pageSize) return logs;
+  }
+}
+
 export async function createAuditLog(input: {
   action: string;
   entity_type: string;
@@ -830,5 +887,28 @@ export async function fetchAllProfiles(): Promise<import('@/types').Profile[]> {
 export async function updateProfile(id: string, updates: Partial<import('@/types').Profile>): Promise<void> {
   const { error } = await supabase.from('profiles').update(updates).eq('id', id);
   if (error) throw error;
+}
+
+export function adminInvitesAvailable(): boolean {
+  const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+  const hasDemoSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
+  return hasSupabaseConfig && !hasDemoSession;
+}
+
+export async function inviteAdminUser(input: {
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: import('@/types').UserRole;
+}): Promise<import('@/types').Profile> {
+  if (!adminInvitesAvailable()) {
+    throw new Error('Email invitations are unavailable in demo mode. Connect Supabase and deploy the admin-invite-user function to create real accounts.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('admin-invite-user', { body: input });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  if (!data?.profile) throw new Error('The invitation was sent, but no profile was returned. Refresh the user list.');
+  return data.profile as import('@/types').Profile;
 }
 
