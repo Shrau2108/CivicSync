@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Profile, UserRole } from '@/types';
@@ -61,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [roleChangeNotice, setRoleChangeNotice] = useState<RoleChangeNotice | null>(null);
 
-  const isDemoRoleActive = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
+  const userRef = useRef<User | null>(null);
+  userRef.current = user;
 
   const checkAndRecordRole = useCallback((newProfile: Profile): RoleChangeNotice | null => {
     if (typeof window === 'undefined') return null;
@@ -143,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // If DB record not found, synthesize a fallback profile to prevent blocking the user
-      const targetUser = fallbackUser || user;
+      const targetUser = fallbackUser || userRef.current;
       if (targetUser && targetUser.id === userId) {
         const fallback = buildFallbackProfile(targetUser);
         try {
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return null;
     },
-    [checkAndRecordRole, user]
+    [checkAndRecordRole]
   );
 
   useEffect(() => {
@@ -185,9 +186,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // 1. If user explicitly activated a demo role session
-    if (isDemoRoleActive) {
-      const savedRole = sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null;
-      if (savedRole) setDemoSession(savedRole);
+    const savedRole =
+      typeof window !== 'undefined'
+        ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null)
+        : null;
+    if (savedRole) {
+      setDemoSession(savedRole);
       setLoading(false);
       clearTimeout(safetyTimer);
       return;
@@ -289,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authListener.subscription.unsubscribe();
       if (realtimeChannel) realtimeChannel.unsubscribe();
     };
-  }, [fetchProfile, isDemoRoleActive, setDemoSession, checkAndRecordRole]);
+  }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     // If user clicked quick demo or typed a demo.local email
