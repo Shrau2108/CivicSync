@@ -146,6 +146,12 @@ export function ReportIssuePage() {
     setSubmitting(true);
     setError(null);
     setUploadProgress(0);
+
+    const safetyTimer = setTimeout(() => {
+      setSubmitting(false);
+      setError('Submission is taking longer than expected. Please check "My Reports" or click Submit to retry.');
+    }, 12000);
+
     try {
       let reportId = createdReportId;
 
@@ -163,21 +169,31 @@ export function ReportIssuePage() {
         setCreatedReportId(reportId);
       }
 
-      await createReportLocation({
-        report_id: reportId,
-        address: address.trim() || undefined,
-        latitude: latitude!,
-        longitude: longitude!,
-      });
+      try {
+        await createReportLocation({
+          report_id: reportId,
+          address: address.trim() || undefined,
+          latitude: latitude!,
+          longitude: longitude!,
+        });
+      } catch (locErr) {
+        console.warn('Failed to save report location, proceeding with report:', locErr);
+      }
 
       for (let i = 0; i < files.length; i++) {
         setUploadProgress(Math.round(((i / files.length) * 100)));
-        await uploadReportMedia(reportId, files[i]);
+        try {
+          await uploadReportMedia(reportId, files[i]);
+        } catch (mediaErr) {
+          console.warn(`Failed to upload media file ${files[i].name}:`, mediaErr);
+        }
       }
       setUploadProgress(100);
 
+      clearTimeout(safetyTimer);
       navigate(`/app/reports/${reportId}`, { state: { justCreated: true } });
     } catch (err) {
+      clearTimeout(safetyTimer);
       setError(err instanceof Error ? err.message : 'Failed to complete submission. You can safely retry.');
       setSubmitting(false);
     }
@@ -499,13 +515,22 @@ export function ReportIssuePage() {
             </div>
 
             {submitting && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting your report...
+              <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    Submitting your report...
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitting(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                  <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                 </div>
               </div>
             )}

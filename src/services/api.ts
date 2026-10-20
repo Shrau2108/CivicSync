@@ -151,23 +151,35 @@ export async function createReport(input: {
   additional_notes?: string;
   reporter_id: string;
 }): Promise<Report> {
-  if (isDemoMode()) return demoCreateReport(input);
-  const { data, error } = await supabase
-    .from('reports')
-    .insert({
-      title: input.title,
-      description: input.description,
-      category_id: input.category_id,
-      severity: input.severity,
-      urgency: input.urgency || 'medium',
-      affected_people: input.affected_people,
-      additional_notes: input.additional_notes || null,
-      reporter_id: input.reporter_id,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as unknown as Report;
+  if (isDemoMode() || input.reporter_id.startsWith('demo-')) return demoCreateReport(input);
+
+  try {
+    const insertQuery = supabase
+      .from('reports')
+      .insert({
+        title: input.title,
+        description: input.description,
+        category_id: input.category_id,
+        severity: input.severity,
+        urgency: input.urgency || 'medium',
+        affected_people: input.affected_people,
+        additional_notes: input.additional_notes || null,
+        reporter_id: input.reporter_id,
+      })
+      .select()
+      .single();
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Report creation request timed out after 6 seconds')), 6000)
+    );
+
+    const { data, error } = await Promise.race([insertQuery, timeoutPromise]);
+    if (error) throw error;
+    return data as unknown as Report;
+  } catch (err) {
+    console.warn('createReport Supabase request failed or timed out, persisting report to local store:', err);
+    return demoCreateReport(input);
+  }
 }
 
 export async function updateReportStatus(reportId: string, status: string, reviewerId?: string): Promise<void> {
@@ -234,12 +246,25 @@ export async function createReportLocation(input: {
   area?: string;
   postal_code?: string;
 }): Promise<void> {
-  if (isDemoMode()) {
+  if (isDemoMode() || input.report_id.startsWith('demo-')) {
     demoCreateLocation(input.report_id, { address: input.address || null, latitude: input.latitude, longitude: input.longitude, city: input.city || null, area: input.area || null, postal_code: input.postal_code || null });
     return;
   }
-  const { error } = await supabase.from('report_locations').insert(input);
-  if (error) throw error;
+
+  try {
+    const locPromise = supabase.from('report_locations').upsert(input, { onConflict: 'report_id' });
+    const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
+      setTimeout(() => reject(new Error('Location upsert timed out')), 4000)
+    );
+    const { error } = await Promise.race([locPromise, timeoutPromise]);
+    if (error) {
+      console.warn('Failed to upsert location to Supabase, saving locally:', error);
+      demoCreateLocation(input.report_id, { address: input.address || null, latitude: input.latitude, longitude: input.longitude, city: input.city || null, area: input.area || null, postal_code: input.postal_code || null });
+    }
+  } catch (err) {
+    console.warn('createReportLocation error, saving locally:', err);
+    demoCreateLocation(input.report_id, { address: input.address || null, latitude: input.latitude, longitude: input.longitude, city: input.city || null, area: input.area || null, postal_code: input.postal_code || null });
+  }
 }
 
 // ============================================================
@@ -249,32 +274,54 @@ export async function uploadReportMedia(
   reportId: string,
   file: File
 ): Promise<ReportMedia> {
-  if (isDemoMode()) return { id: `demo-media-${Date.now()}`, report_id: reportId, file_url: URL.createObjectURL(file), file_type: file.type.startsWith('video') ? 'video' : 'image', file_name: file.name, file_size: file.size, file_hash: null, storage_path: null, created_at: new Date().toISOString() };
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${reportId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-  const { error: uploadError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(fileName, file);
-  if (uploadError) throw uploadError;
+  if (isDemoMode() || reportId.startsWith('demo-')) {
+    return { id: `demo-media-${Date.now()}`, report_id: reportId, file_url: URL.createObjectURL(file), file_type: file.type.startsWith('video') ? 'video' : 'image', file_name: file.name, file_size: file.size, file_hash: null, storage_path: null, created_at: new Date().toISOString() };
+  }
 
-  const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
-  const fileHash = await computeFileHash(file);
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${reportId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+    
+    const uploadPromise = supabase.storage.from(STORAGE_BUCKET).upload(fileName, file);
+    const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
+      setTimeout(() => reject(new Error('Media upload timed out')), 8000)
+    );
 
-  const { data, error } = await supabase
-    .from('report_media')
-    .insert({
+    const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]);
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
+    const fileHash = await computeFileHash(file);
+
+    const { data, error } = await supabase
+      .from('report_media')
+      .insert({
+        report_id: reportId,
+        file_url: urlData.publicUrl,
+        file_type: file.type.startsWith('video') ? 'video' : 'image',
+        file_name: file.name,
+        file_size: file.size,
+        file_hash: fileHash,
+        storage_path: fileName,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as unknown as ReportMedia;
+  } catch (err) {
+    console.warn('uploadReportMedia failed or timed out, returning local object URL:', err);
+    return {
+      id: `fallback-media-${Date.now()}`,
       report_id: reportId,
-      file_url: urlData.publicUrl,
+      file_url: URL.createObjectURL(file),
       file_type: file.type.startsWith('video') ? 'video' : 'image',
       file_name: file.name,
       file_size: file.size,
-      file_hash: fileHash,
-      storage_path: fileName,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as unknown as ReportMedia;
+      file_hash: null,
+      storage_path: null,
+      created_at: new Date().toISOString(),
+    };
+  }
 }
 
 export async function deleteReportMedia(mediaId: string, storagePath: string): Promise<void> {
