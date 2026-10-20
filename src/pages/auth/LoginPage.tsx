@@ -23,19 +23,26 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { error: authError } = await signIn(email, password);
+    const { error: authError, profile: signedProfile } = await signIn(email, password);
     setLoading(false);
 
     if (authError) {
       setError(authError);
     } else {
-      navigate(from, { replace: true });
+      const targetRole = signedProfile?.role || 'citizen';
+      const roleRoute = `/app/${targetRole}`;
+      // If from was generic /app or belongs to a different role dashboard, navigate to user's real role dashboard
+      if (!from || from === '/app' || (from.startsWith('/app/') && !from.startsWith(roleRoute))) {
+        navigate(roleRoute, { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
   };
 
   const handleQuickDemo = (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
     startDemoSession(role);
-    navigate(from, { replace: true });
+    navigate(`/app/${role}`, { replace: true });
   };
 
   return (

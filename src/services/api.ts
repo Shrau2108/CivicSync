@@ -119,17 +119,26 @@ export async function fetchReportById(id: string): Promise<Report | null> {
 
 export async function fetchReportsByReporter(reporterId: string): Promise<Report[]> {
   if (isDemoMode()) return demoReportsByReporter(reporterId);
-  const { data, error } = await supabase
-    .from('reports')
-    .select(`
-      *,
-      category:report_categories(*),
-      location:report_locations(*)
-    `)
-    .eq('reporter_id', reporterId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as Report[];
+  try {
+    const { data, error } = await supabase
+      .from('reports')
+      .select(`
+        *,
+        category:report_categories(*),
+        location:report_locations(*)
+      `)
+      .eq('reporter_id', reporterId)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      return data as unknown as Report[];
+    }
+    if (error) {
+      console.warn('Could not fetch reports by reporter from Supabase:', error.message);
+    }
+  } catch (err) {
+    console.warn('Error fetching reports by reporter:', err);
+  }
+  return demoReportsByReporter(reporterId);
 }
 
 export async function createReport(input: {
@@ -865,13 +874,22 @@ export async function fetchVerificationRecords(taskId: string): Promise<Verifica
 // ============================================================
 export async function fetchNotifications(userId: string): Promise<Notification[]> {
   if (isDemoMode()) return [];
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as Notification[];
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      return data as unknown as Notification[];
+    }
+    if (error) {
+      console.warn('Could not fetch notifications from Supabase:', error.message);
+    }
+  } catch (err) {
+    console.warn('Error fetching notifications:', err);
+  }
+  return [];
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
@@ -935,29 +953,65 @@ export async function fetchFeedbackForReport(reportId: string): Promise<Feedback
 // ============================================================
 export async function fetchAuditLogs(limit = 50): Promise<AuditLog[]> {
   if (isDemoMode()) return [];
-  const { data, error } = await supabase
-    .from('audit_logs')
-    .select('*, actor:profiles!audit_logs_actor_id_fkey(*)')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data as unknown as AuditLog[];
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.warn('Could not fetch audit logs from Supabase:', error.message);
+      return [];
+    }
+    const logs = (data || []) as unknown as AuditLog[];
+    const actorIds = logs.map((l) => l.actor_id).filter((id): id is string => Boolean(id));
+    if (actorIds.length > 0) {
+      const profileMap = await hydrateProfiles(actorIds);
+      logs.forEach((log) => {
+        if (log.actor_id && profileMap[log.actor_id]) {
+          log.actor = profileMap[log.actor_id];
+        }
+      });
+    }
+    return logs;
+  } catch (err) {
+    console.warn('Error fetching audit logs:', err);
+    return [];
+  }
 }
 
 export async function fetchAllAuditLogs(): Promise<AuditLog[]> {
   if (isDemoMode()) return [];
-  const pageSize = 1000;
-  const logs: AuditLog[] = [];
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*, actor:profiles!audit_logs_actor_id_fkey(*)')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    const page = (data || []) as unknown as AuditLog[];
-    logs.push(...page);
-    if (page.length < pageSize) return logs;
+  try {
+    const pageSize = 1000;
+    const logs: AuditLog[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (error) {
+        console.warn('Could not fetch all audit logs from Supabase:', error.message);
+        return logs;
+      }
+      const page = (data || []) as unknown as AuditLog[];
+      logs.push(...page);
+      if (page.length < pageSize) break;
+    }
+    const actorIds = logs.map((l) => l.actor_id).filter((id): id is string => Boolean(id));
+    if (actorIds.length > 0) {
+      const profileMap = await hydrateProfiles(actorIds);
+      logs.forEach((log) => {
+        if (log.actor_id && profileMap[log.actor_id]) {
+          log.actor = profileMap[log.actor_id];
+        }
+      });
+    }
+    return logs;
+  } catch (err) {
+    console.warn('Error in fetchAllAuditLogs:', err);
+    return [];
   }
 }
 
@@ -1039,9 +1093,18 @@ export async function updateSystemSetting(key: string, value: Record<string, unk
 // ============================================================
 export async function fetchAllProfiles(): Promise<import('@/types').Profile[]> {
   if (isDemoMode()) return demoAllProfiles();
-  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as import('@/types').Profile[];
+  try {
+    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (!error && data && data.length > 0) {
+      return data as unknown as import('@/types').Profile[];
+    }
+    if (error) {
+      console.warn('Could not fetch profiles from Supabase, falling back to demo store:', error.message);
+    }
+  } catch (err) {
+    console.warn('Error in fetchAllProfiles:', err);
+  }
+  return demoAllProfiles();
 }
 
 export async function updateProfile(id: string, updates: Partial<import('@/types').Profile>): Promise<void> {

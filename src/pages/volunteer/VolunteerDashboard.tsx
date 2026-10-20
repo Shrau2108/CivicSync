@@ -43,26 +43,44 @@ export function VolunteerDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!user) return;
     setLoading(true);
     setError(null);
     try {
-      const [t, v, n] = await Promise.all([
-        fetchTasksForVolunteer(user.id),
-        fetchVolunteerByUserId(user.id),
-        fetchNotifications(user.id),
+      const targetUserId = user?.id;
+      if (!targetUserId) {
+        setTasks([]);
+        setVolunteer(null);
+        setNotifications([]);
+        return;
+      }
+      const results = await Promise.allSettled([
+        fetchTasksForVolunteer(targetUserId),
+        fetchVolunteerByUserId(targetUserId),
+        fetchNotifications(targetUserId),
       ]);
+      const t = results[0].status === 'fulfilled' ? results[0].value : [];
+      const v = results[1].status === 'fulfilled' ? results[1].value : null;
+      const n = results[2].status === 'fulfilled' ? results[2].value : [];
       setTasks(t);
       setVolunteer(v);
       setNotifications(n);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.warn('Volunteer dashboard data load warning:', err);
+      setTasks([]);
+      setVolunteer(null);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const safety = setTimeout(() => {
+      setLoading(false);
+    }, 2500);
+    load().finally(() => clearTimeout(safety));
+    return () => clearTimeout(safety);
+  }, [load]);
 
   if (loading) return <LoadingState message="Loading your dashboard..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;

@@ -15,7 +15,7 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; profile?: Profile | null }>;
   signUp: (email: string, password: string, fullName: string, role: UserRole, phone?: string) => Promise<{ error: string | null; message?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -295,13 +295,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
+  const signIn = async (email: string, password: string): Promise<{ error: string | null; profile?: Profile | null }> => {
     // If user clicked quick demo or typed a demo.local email
     if (email.endsWith('@demo.local') || (!isSupabaseConfigured && !password)) {
       const role = email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : email.includes('admin') ? 'admin' : 'citizen';
       sessionStorage.setItem('civicsync-demo-role', role);
       setDemoSession(role);
-      return { error: null };
+      return { error: null, profile: demoRoleProfile(role) };
     }
 
     if (!isSupabaseConfigured) {
@@ -338,11 +338,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error: formatAuthError(error.message) };
 
       if (data.user) {
-        const initial = buildFallbackProfile(data.user);
-        setProfile(initial);
-        await fetchProfile(data.user.id, 1, data.user);
+        setUser(data.user);
+        const liveProfile = await fetchProfile(data.user.id, 1, data.user);
+        const active = liveProfile || buildFallbackProfile(data.user);
+        setProfile(active);
+        return { error: null, profile: active };
       }
-      return { error: null };
+      return { error: null, profile: null };
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'An unexpected error occurred during sign in.' };
     }
