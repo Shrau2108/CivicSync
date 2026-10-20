@@ -2,24 +2,30 @@ import { supabase, STORAGE_BUCKET, isSupabaseConfigured } from '@/lib/supabase';
 import type {
   Report, ReportCategory, ReportMedia, Task, TaskAssignment,
   Volunteer, Notification, Feedback, AuditLog, DuplicateCandidate,
-  VerificationRecord, Evidence, PriorityScore, SystemSetting, VolunteerTaskRequest,
+  VerificationRecord, Evidence, PriorityScore, SystemSetting, VolunteerTaskRequest, Profile,
 } from '@/types';
 import { computeFileHash } from '@/lib/duplicateDetection';
 import { matchVolunteersToTask } from '@/lib/volunteerMatching';
-import { DEMO_MODE, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoUpdateReportPriority, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask, demoVolunteerTaskRequests, demoSubmitVolunteerTaskRequest, demoReviewVolunteerTaskRequest, demoUploadEvidence, demoCreateVerificationRecord, demoVerificationRecords, demoHydrateTaskMedia, demoAllProfiles } from '@/lib/demoMode';
+import { isDemoMode, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoUpdateReportPriority, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask, demoVolunteerTaskRequests, demoSubmitVolunteerTaskRequest, demoReviewVolunteerTaskRequest, demoUploadEvidence, demoCreateVerificationRecord, demoVerificationRecords, demoHydrateTaskMedia, demoAllProfiles } from '@/lib/demoMode';
 
 // ============================================================
 // CATEGORIES
 // ============================================================
 export async function fetchCategories(): Promise<ReportCategory[]> {
-  if (DEMO_MODE) return demoCategories;
-  const { data, error } = await supabase
-    .from('report_categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('name');
-  if (error) throw error;
-  return data as ReportCategory[];
+  if (isDemoMode()) return demoCategories;
+  try {
+    const { data, error } = await supabase
+      .from('report_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('name');
+    if (!error && data && data.length > 0) {
+      return data as ReportCategory[];
+    }
+  } catch (err) {
+    console.warn('Could not fetch categories from Supabase, using defaults:', err);
+  }
+  return demoCategories;
 }
 
 // ============================================================
@@ -30,56 +36,65 @@ export async function fetchReports(filters?: {
   category_id?: string;
   priority_level?: string;
 }): Promise<Report[]> {
-  if (DEMO_MODE) return demoReports(filters);
-  let query = supabase
-    .from('reports')
-    .select(`
-      *,
-      category:report_categories(*),
-      location:report_locations(*)
-    `)
-    .order('created_at', { ascending: false });
+  if (isDemoMode()) return demoReports(filters);
+  try {
+    let query = supabase
+      .from('reports')
+      .select(`
+        *,
+        category:report_categories(*),
+        location:report_locations(*)
+      `)
+      .order('created_at', { ascending: false });
 
-  if (filters?.status) query = query.eq('status', filters.status);
-  if (filters?.category_id) query = query.eq('category_id', filters.category_id);
-  if (filters?.priority_level) query = query.eq('priority_level', filters.priority_level);
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.category_id) query = query.eq('category_id', filters.category_id);
+    if (filters?.priority_level) query = query.eq('priority_level', filters.priority_level);
 
-  const { data, error } = await query;
-  if (error) throw error;
-  
-  const reports = data as unknown as Report[];
-  const reporterIds = [...new Set(reports.map(r => r.reporter_id).filter(Boolean))];
-  if (reporterIds.length > 0) {
-    const { data: profiles } = await supabase.from('profiles').select('*').in('id', reporterIds);
-    if (profiles) {
-      reports.forEach(r => {
-        r.reporter = profiles.find(p => p.id === r.reporter_id);
-      });
+    const { data, error } = await query;
+    if (!error && data) {
+      const reports = data as unknown as Report[];
+      const reporterIds = [...new Set(reports.map(r => r.reporter_id).filter(Boolean))];
+      if (reporterIds.length > 0) {
+        const { data: profiles } = await supabase.from('profiles').select('*').in('id', reporterIds);
+        if (profiles) {
+          reports.forEach(r => {
+            r.reporter = profiles.find(p => p.id === r.reporter_id);
+          });
+        }
+      }
+      return reports;
     }
+  } catch (err) {
+    console.warn('Error fetching live reports, falling back to demo store:', err);
   }
-
-  return reports as unknown as Report[];
+  return demoReports(filters);
 }
 
 export async function fetchAllReports(): Promise<Report[]> {
-  if (DEMO_MODE) return demoReports();
-  const pageSize = 1000;
-  const reports: Report[] = [];
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*, category:report_categories(*), location:report_locations(*)')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    const page = (data || []) as unknown as Report[];
-    reports.push(...page);
-    if (page.length < pageSize) return reports;
+  if (isDemoMode()) return demoReports();
+  try {
+    const pageSize = 1000;
+    const reports: Report[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*, category:report_categories(*), location:report_locations(*)')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const page = (data || []) as unknown as Report[];
+      reports.push(...page);
+      if (page.length < pageSize) return reports;
+    }
+  } catch (err) {
+    console.warn('Error fetching all live reports:', err);
+    return demoReports();
   }
 }
 
 export async function fetchReportById(id: string): Promise<Report | null> {
-  if (DEMO_MODE) return demoReportById(id);
+  if (isDemoMode()) return demoReportById(id);
   const { data, error } = await supabase
     .from('reports')
     .select(`
@@ -103,7 +118,7 @@ export async function fetchReportById(id: string): Promise<Report | null> {
 }
 
 export async function fetchReportsByReporter(reporterId: string): Promise<Report[]> {
-  if (DEMO_MODE) return demoReportsByReporter(reporterId);
+  if (isDemoMode()) return demoReportsByReporter(reporterId);
   const { data, error } = await supabase
     .from('reports')
     .select(`
@@ -127,7 +142,7 @@ export async function createReport(input: {
   additional_notes?: string;
   reporter_id: string;
 }): Promise<Report> {
-  if (DEMO_MODE) return demoCreateReport(input);
+  if (isDemoMode()) return demoCreateReport(input);
   const { data, error } = await supabase
     .from('reports')
     .insert({
@@ -147,7 +162,7 @@ export async function createReport(input: {
 }
 
 export async function updateReportStatus(reportId: string, status: string, reviewerId?: string): Promise<void> {
-  if (DEMO_MODE) { demoUpdateReportStatus(reportId, status, reviewerId); return; }
+  if (isDemoMode()) { demoUpdateReportStatus(reportId, status, reviewerId); return; }
   const updates: Record<string, unknown> = { status };
   if (reviewerId) {
     updates.reviewer_id = reviewerId;
@@ -165,7 +180,7 @@ export async function reviewReport(
   status: 'under_review' | 'verified' | 'rejected',
   reviewerId: string
 ): Promise<void> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     demoUpdateReportStatus(reportId, status, reviewerId);
     return;
   }
@@ -177,7 +192,7 @@ export async function reviewReport(
 }
 
 export async function updateReportPriority(reportId: string, priorityLevel: string, priorityScore: number, urgency?: string): Promise<void> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     demoUpdateReportPriority(reportId, priorityLevel, priorityScore, urgency);
     return;
   }
@@ -210,7 +225,7 @@ export async function createReportLocation(input: {
   area?: string;
   postal_code?: string;
 }): Promise<void> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     demoCreateLocation(input.report_id, { address: input.address || null, latitude: input.latitude, longitude: input.longitude, city: input.city || null, area: input.area || null, postal_code: input.postal_code || null });
     return;
   }
@@ -225,7 +240,7 @@ export async function uploadReportMedia(
   reportId: string,
   file: File
 ): Promise<ReportMedia> {
-  if (DEMO_MODE) return { id: `demo-media-${Date.now()}`, report_id: reportId, file_url: URL.createObjectURL(file), file_type: file.type.startsWith('video') ? 'video' : 'image', file_name: file.name, file_size: file.size, file_hash: null, storage_path: null, created_at: new Date().toISOString() };
+  if (isDemoMode()) return { id: `demo-media-${Date.now()}`, report_id: reportId, file_url: URL.createObjectURL(file), file_type: file.type.startsWith('video') ? 'video' : 'image', file_name: file.name, file_size: file.size, file_hash: null, storage_path: null, created_at: new Date().toISOString() };
   const fileExt = file.name.split('.').pop();
   const fileName = `${reportId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
   const { error: uploadError } = await supabase.storage
@@ -322,38 +337,70 @@ export async function savePriorityScore(input: {
   if (error) throw error;
 }
 
+async function hydrateProfiles(userIds: (string | undefined | null)[]): Promise<Record<string, Profile>> {
+  const unique = [...new Set(userIds.filter(Boolean) as string[])];
+  if (unique.length === 0) return {};
+  try {
+    const { data } = await supabase.from('profiles').select('*').in('id', unique);
+    if (data) {
+      return Object.fromEntries(data.map((p) => [p.id, p as Profile]));
+    }
+  } catch (err) {
+    console.warn('Error fetching profiles map:', err);
+  }
+  return {};
+}
+
 // ============================================================
 // VOLUNTEERS
 // ============================================================
 export async function fetchVolunteers(): Promise<Volunteer[]> {
-  if (DEMO_MODE) return demoVolunteers();
-  const { data, error } = await supabase
-    .from('volunteers')
-    .select(`
-      *,
-      profile:profiles!volunteers_user_id_fkey(*),
-      skills:volunteer_skills(*),
-      availability:volunteer_availability(*)
-    `)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as Volunteer[];
+  if (isDemoMode()) return demoVolunteers();
+  try {
+    const { data, error } = await supabase
+      .from('volunteers')
+      .select(`
+        *,
+        skills:volunteer_skills(*),
+        availability:volunteer_availability(*)
+      `)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      const profileMap = await hydrateProfiles(data.map((v: any) => v.user_id));
+      return data.map((v: any) => ({
+        ...v,
+        profile: profileMap[v.user_id] || null,
+      })) as Volunteer[];
+    }
+  } catch (err) {
+    console.warn('Error fetching live volunteers, falling back to demo store:', err);
+  }
+  return demoVolunteers();
 }
 
 export async function fetchVolunteerByUserId(userId: string): Promise<Volunteer | null> {
-  if (DEMO_MODE) return demoVolunteers().find((volunteer) => volunteer.user_id === userId) || null;
-  const { data, error } = await supabase
-    .from('volunteers')
-    .select(`
-      *,
-      profile:profiles!volunteers_user_id_fkey(*),
-      skills:volunteer_skills(*),
-      availability:volunteer_availability(*)
-    `)
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  return data as unknown as Volunteer | null;
+  if (isDemoMode()) return demoVolunteers().find((volunteer) => volunteer.user_id === userId) || null;
+  try {
+    const { data, error } = await supabase
+      .from('volunteers')
+      .select(`
+        *,
+        skills:volunteer_skills(*),
+        availability:volunteer_availability(*)
+      `)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!error && data) {
+      const profileMap = await hydrateProfiles([userId]);
+      return {
+        ...data,
+        profile: profileMap[userId] || null,
+      } as unknown as Volunteer;
+    }
+  } catch (err) {
+    console.warn('Error fetching volunteer by user id:', err);
+  }
+  return demoVolunteers().find((volunteer) => volunteer.user_id === userId) || null;
 }
 
 export async function createVolunteer(input: {
@@ -405,99 +452,163 @@ export async function removeVolunteerAvailability(availId: string): Promise<void
 // TASKS
 // ============================================================
 export async function fetchTasks(filters?: { status?: string }): Promise<Task[]> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     const tasks = demoTasks().filter((task) => !filters?.status || task.status === filters.status);
     return demoHydrateTaskMedia(tasks);
   }
-  let query = supabase
-    .from('tasks')
-    .select(`
-      *,
-      report:reports(*),
-      category:report_categories(*),
-      assignments:task_assignments(*, volunteer:profiles!task_assignments_volunteer_id_fkey(*)),
-      evidence:evidence(*)
-    `)
-    .order('created_at', { ascending: false });
-
-  if (filters?.status) query = query.eq('status', filters.status);
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as unknown as Task[];
-}
-
-export async function fetchAllTasks(): Promise<Task[]> {
-  if (DEMO_MODE) return demoHydrateTaskMedia(demoTasks());
-  const pageSize = 1000;
-  const tasks: Task[] = [];
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
+  try {
+    let query = supabase
       .from('tasks')
       .select(`
         *,
         report:reports(*),
         category:report_categories(*),
-        assignments:task_assignments(*, volunteer:profiles!task_assignments_volunteer_id_fkey(*)),
+        assignments:task_assignments(*),
         evidence:evidence(*)
       `)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    const page = (data || []) as unknown as Task[];
-    tasks.push(...page);
-    if (page.length < pageSize) return tasks;
+      .order('created_at', { ascending: false });
+
+    if (filters?.status) query = query.eq('status', filters.status);
+
+    const { data, error } = await query;
+    if (!error && data) {
+      const volunteerIds = data.flatMap((t: any) => (t.assignments || []).map((a: any) => a.volunteer_id));
+      const profileMap = await hydrateProfiles(volunteerIds);
+      return data.map((t: any) => ({
+        ...t,
+        assignments: (t.assignments || []).map((a: any) => ({
+          ...a,
+          volunteer: profileMap[a.volunteer_id] || null,
+        })),
+      })) as unknown as Task[];
+    }
+  } catch (err) {
+    console.warn('Error fetching live tasks, falling back to demo store:', err);
+  }
+  const fallbackTasks = demoTasks().filter((task) => !filters?.status || task.status === filters.status);
+  return demoHydrateTaskMedia(fallbackTasks);
+}
+
+export async function fetchAllTasks(): Promise<Task[]> {
+  if (isDemoMode()) return demoHydrateTaskMedia(demoTasks());
+  try {
+    const pageSize = 1000;
+    const tasks: Task[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          report:reports(*),
+          category:report_categories(*),
+          assignments:task_assignments(*),
+          evidence:evidence(*)
+        `)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const page = (data || []) as unknown as Task[];
+      tasks.push(...page);
+      if (page.length < pageSize) break;
+    }
+    const volunteerIds = tasks.flatMap((t: any) => (t.assignments || []).map((a: any) => a.volunteer_id));
+    const profileMap = await hydrateProfiles(volunteerIds);
+    return tasks.map((t: any) => ({
+      ...t,
+      assignments: (t.assignments || []).map((a: any) => ({
+        ...a,
+        volunteer: profileMap[a.volunteer_id] || null,
+      })),
+    }));
+  } catch (err) {
+    console.warn('Error in fetchAllTasks, falling back to demo store:', err);
+    return demoHydrateTaskMedia(demoTasks());
   }
 }
 
 export async function fetchTaskById(id: string): Promise<Task | null> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     const task = demoTaskById(id);
     if (!task) return null;
     return (await demoHydrateTaskMedia([task]))[0];
   }
-  const { data, error } = await supabase
-    .from('tasks')
-    .select(`
-      *,
-      report:reports(*, category:report_categories(*), location:report_locations(*)),
-      category:report_categories(*),
-      assignments:task_assignments(*, volunteer:profiles!task_assignments_volunteer_id_fkey(*)),
-      evidence:evidence(*),
-      history:task_status_history(*, changedByUser:profiles!task_status_history_changed_by_fkey(*))
-    `)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return data as unknown as Task | null;
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        report:reports(*, category:report_categories(*), location:report_locations(*)),
+        category:report_categories(*),
+        assignments:task_assignments(*),
+        evidence:evidence(*),
+        history:task_status_history(*)
+      `)
+      .eq('id', id)
+      .maybeSingle();
+    if (!error && data) {
+      const volunteerIds = (data.assignments || []).map((a: any) => a.volunteer_id);
+      const changedByUserIds = (data.history || []).map((h: any) => h.changed_by);
+      const profileMap = await hydrateProfiles([...volunteerIds, ...changedByUserIds]);
+      return {
+        ...data,
+        assignments: (data.assignments || []).map((a: any) => ({
+          ...a,
+          volunteer: profileMap[a.volunteer_id] || null,
+        })),
+        history: (data.history || []).map((h: any) => ({
+          ...h,
+          changedByUser: profileMap[h.changed_by] || null,
+        })),
+      } as unknown as Task;
+    }
+  } catch (err) {
+    console.warn('Error fetching task by id, falling back to demo store:', err);
+  }
+  const task = demoTaskById(id);
+  if (!task) return null;
+  return (await demoHydrateTaskMedia([task]))[0];
 }
 
 export async function fetchTasksForVolunteer(volunteerId: string): Promise<Task[]> {
-  if (DEMO_MODE) return demoHydrateTaskMedia(demoTasksForVolunteer(volunteerId));
-  const { data: assignments } = await supabase
-    .from('task_assignments')
-    .select('task_id')
-    .eq('volunteer_id', volunteerId);
+  if (isDemoMode()) return demoHydrateTaskMedia(demoTasksForVolunteer(volunteerId));
+  try {
+    const { data: assignments } = await supabase
+      .from('task_assignments')
+      .select('task_id')
+      .eq('volunteer_id', volunteerId);
 
-  if (!assignments || assignments.length === 0) return [];
+    if (!assignments || assignments.length === 0) return [];
 
-  const taskIds = assignments.map((a) => a.task_id);
-  const { data, error } = await supabase
-    .from('tasks')
-    .select(`
-      *,
-      report:reports(*, category:report_categories(*), location:report_locations(*)),
-      category:report_categories(*),
-      assignments:task_assignments(*, volunteer:profiles!task_assignments_volunteer_id_fkey(*))
-    `)
-    .in('id', taskIds)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as unknown as Task[];
+    const taskIds = assignments.map((a) => a.task_id);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        report:reports(*, category:report_categories(*), location:report_locations(*)),
+        category:report_categories(*),
+        assignments:task_assignments(*)
+      `)
+      .in('id', taskIds)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      const volunteerIds = data.flatMap((t: any) => (t.assignments || []).map((a: any) => a.volunteer_id));
+      const profileMap = await hydrateProfiles(volunteerIds);
+      return data.map((t: any) => ({
+        ...t,
+        assignments: (t.assignments || []).map((a: any) => ({
+          ...a,
+          volunteer: profileMap[a.volunteer_id] || null,
+        })),
+      })) as unknown as Task[];
+    }
+  } catch (err) {
+    console.warn('Error fetching tasks for volunteer, falling back to demo store:', err);
+  }
+  return demoHydrateTaskMedia(demoTasksForVolunteer(volunteerId));
 }
 
 export async function fetchAvailableTasks(): Promise<Task[]> {
-  if (DEMO_MODE) return demoTasks().filter((task) => ['assigned', 'accepted'].includes(task.status));
+  if (isDemoMode()) return demoTasks().filter((task) => ['assigned', 'accepted'].includes(task.status));
   const { data, error } = await supabase
     .from('tasks')
     .select(`
@@ -522,7 +633,7 @@ export async function fetchAvailableVolunteerReports(): Promise<Report[]> {
 }
 
 export async function fetchVolunteerTaskRequests(volunteerId?: string): Promise<VolunteerTaskRequest[]> {
-  if (DEMO_MODE) return demoVolunteerTaskRequests(volunteerId);
+  if (isDemoMode()) return demoVolunteerTaskRequests(volunteerId);
 
   let query = supabase
     .from('volunteer_task_requests')
@@ -550,7 +661,7 @@ export async function fetchVolunteerTaskRequests(volunteerId?: string): Promise<
 }
 
 export async function submitVolunteerTaskRequest(reportId: string, message: string): Promise<VolunteerTaskRequest> {
-  if (DEMO_MODE) return demoSubmitVolunteerTaskRequest(reportId, message);
+  if (isDemoMode()) return demoSubmitVolunteerTaskRequest(reportId, message);
   const { data, error } = await supabase.rpc('submit_volunteer_task_request', {
     p_report_id: reportId,
     p_message: message.trim() || null,
@@ -560,7 +671,7 @@ export async function submitVolunteerTaskRequest(reportId: string, message: stri
 }
 
 export async function reviewVolunteerTaskRequest(requestId: string, approve: boolean): Promise<VolunteerTaskRequest> {
-  if (DEMO_MODE) return demoReviewVolunteerTaskRequest(requestId, approve, 'demo-supervisor');
+  if (isDemoMode()) return demoReviewVolunteerTaskRequest(requestId, approve, 'demo-supervisor');
   const { data, error } = await supabase.rpc('review_volunteer_task_request', {
     p_request_id: requestId,
     p_approve: approve,
@@ -583,7 +694,7 @@ export async function createTask(input: {
   notes?: string;
   created_by: string;
 }): Promise<Task> {
-  if (DEMO_MODE) return demoCreateTask(input);
+  if (isDemoMode()) return demoCreateTask(input);
   const { data, error } = await supabase
     .from('tasks')
     .insert(input)
@@ -594,7 +705,7 @@ export async function createTask(input: {
 }
 
 export async function updateTaskStatus(taskId: string, status: string, changedBy: string, reason?: string): Promise<void> {
-  if (DEMO_MODE) { demoUpdateTaskStatus(taskId, status); return; }
+  if (isDemoMode()) { demoUpdateTaskStatus(taskId, status); return; }
   const { data: task } = await supabase
     .from('tasks')
     .select('status')
@@ -622,7 +733,7 @@ export async function updateTaskStatus(taskId: string, status: string, changedBy
 // TASK ASSIGNMENTS
 // ============================================================
 export async function assignTask(taskId: string, volunteerId: string, assignedBy: string): Promise<TaskAssignment> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     const task = demoTasks().find((item) => item.id === taskId);
     const volunteer = demoVolunteers().find((item) => item.user_id === volunteerId);
     if (!task || !volunteer) throw new Error('Task or volunteer is no longer available');
@@ -644,7 +755,7 @@ export async function assignTask(taskId: string, volunteerId: string, assignedBy
 }
 
 export async function acceptTask(taskId: string, volunteerId: string): Promise<{ success: boolean; error?: string }> {
-  if (DEMO_MODE) return demoAcceptTask(taskId, volunteerId);
+  if (isDemoMode()) return demoAcceptTask(taskId, volunteerId);
   const { data, error } = await supabase.rpc('accept_task_atomic', {
     p_task_id: taskId,
     p_volunteer_id: volunteerId,
@@ -654,7 +765,7 @@ export async function acceptTask(taskId: string, volunteerId: string): Promise<{
 }
 
 export async function declineTask(taskId: string, volunteerId: string, reason: string): Promise<void> {
-  if (DEMO_MODE) { demoDeclineTask(taskId, volunteerId, reason); return; }
+  if (isDemoMode()) { demoDeclineTask(taskId, volunteerId, reason); return; }
   const { error } = await supabase.rpc('decline_task_atomic', {
     p_task_id: taskId,
     p_volunteer_id: volunteerId,
@@ -673,7 +784,7 @@ export async function uploadEvidence(
   evidenceType: 'before' | 'after',
   notes?: string
 ): Promise<Evidence> {
-  if (DEMO_MODE) return demoUploadEvidence(taskId, volunteerId, file, evidenceType, notes);
+  if (isDemoMode()) return demoUploadEvidence(taskId, volunteerId, file, evidenceType, notes);
 
   const fileExt = file.name.split('.').pop();
   const fileName = `${taskId}/${evidenceType}-${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
@@ -705,7 +816,7 @@ export async function uploadEvidence(
 }
 
 export async function fetchEvidenceForTask(taskId: string): Promise<Evidence[]> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     const t = demoTaskById(taskId);
     return t?.evidence || [];
   }
@@ -730,7 +841,7 @@ export async function createVerificationRecord(input: {
   after_hash?: string;
   hash_match?: boolean;
 }): Promise<void> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     demoCreateVerificationRecord(input);
     return;
   }
@@ -739,7 +850,7 @@ export async function createVerificationRecord(input: {
 }
 
 export async function fetchVerificationRecords(taskId: string): Promise<VerificationRecord[]> {
-  if (DEMO_MODE) return demoVerificationRecords(taskId);
+  if (isDemoMode()) return demoVerificationRecords(taskId);
   const { data, error } = await supabase
     .from('verification_records')
     .select('*, verifier:profiles!verification_records_verifier_id_fkey(*)')
@@ -753,7 +864,7 @@ export async function fetchVerificationRecords(taskId: string): Promise<Verifica
 // NOTIFICATIONS
 // ============================================================
 export async function fetchNotifications(userId: string): Promise<Notification[]> {
-  if (DEMO_MODE) return [];
+  if (isDemoMode()) return [];
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
@@ -764,13 +875,13 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  if (DEMO_MODE) return;
+  if (isDemoMode()) return;
   const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
   if (error) throw error;
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  if (DEMO_MODE) return;
+  if (isDemoMode()) return;
   const { error } = await supabase
     .from('notifications')
     .update({ is_read: true })
@@ -787,7 +898,7 @@ export async function createNotification(input: {
   related_report_id?: string;
   related_task_id?: string;
 }): Promise<void> {
-  if (DEMO_MODE) return;
+  if (isDemoMode()) return;
   const { error } = await supabase.from('notifications').insert(input);
   if (error) throw error;
 }
@@ -803,13 +914,13 @@ export async function createFeedback(input: {
   request_reopen?: boolean;
   reopen_reason?: string;
 }): Promise<void> {
-  if (DEMO_MODE) return;
+  if (isDemoMode()) return;
   const { error } = await supabase.from('feedback').insert(input);
   if (error) throw error;
 }
 
 export async function fetchFeedbackForReport(reportId: string): Promise<Feedback[]> {
-  if (DEMO_MODE) return [];
+  if (isDemoMode()) return [];
   const { data, error } = await supabase
     .from('feedback')
     .select('*')
@@ -823,7 +934,7 @@ export async function fetchFeedbackForReport(reportId: string): Promise<Feedback
 // AUDIT LOGS
 // ============================================================
 export async function fetchAuditLogs(limit = 50): Promise<AuditLog[]> {
-  if (DEMO_MODE) return [];
+  if (isDemoMode()) return [];
   const { data, error } = await supabase
     .from('audit_logs')
     .select('*, actor:profiles!audit_logs_actor_id_fkey(*)')
@@ -834,7 +945,7 @@ export async function fetchAuditLogs(limit = 50): Promise<AuditLog[]> {
 }
 
 export async function fetchAllAuditLogs(): Promise<AuditLog[]> {
-  if (DEMO_MODE) return [];
+  if (isDemoMode()) return [];
   const pageSize = 1000;
   const logs: AuditLog[] = [];
   for (let offset = 0; ; offset += pageSize) {
@@ -856,7 +967,7 @@ export async function createAuditLog(input: {
   entity_id?: string;
   details?: Record<string, unknown>;
 }): Promise<void> {
-  if (DEMO_MODE) return;
+  if (isDemoMode()) return;
   const { error } = await supabase.from('audit_logs').insert(input);
   if (error) throw error;
 }
@@ -900,7 +1011,7 @@ let demoSystemSettingsStore: SystemSetting[] = [
 ];
 
 export async function fetchSystemSettings(): Promise<SystemSetting[]> {
-  if (DEMO_MODE) return demoSystemSettingsStore;
+  if (isDemoMode()) return demoSystemSettingsStore;
   const { data, error } = await supabase.from('system_settings').select('*');
   if (error) {
     console.warn('Could not fetch system settings from Supabase, using fallback:', error.message);
@@ -910,7 +1021,7 @@ export async function fetchSystemSettings(): Promise<SystemSetting[]> {
 }
 
 export async function updateSystemSetting(key: string, value: Record<string, unknown>): Promise<void> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     demoSystemSettingsStore = demoSystemSettingsStore.map(s =>
       s.key === key ? { ...s, value, updated_at: new Date().toISOString() } : s
     );
@@ -927,14 +1038,14 @@ export async function updateSystemSetting(key: string, value: Record<string, unk
 // PROFILES
 // ============================================================
 export async function fetchAllProfiles(): Promise<import('@/types').Profile[]> {
-  if (DEMO_MODE) return demoAllProfiles();
+  if (isDemoMode()) return demoAllProfiles();
   const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
   if (error) throw error;
   return data as unknown as import('@/types').Profile[];
 }
 
 export async function updateProfile(id: string, updates: Partial<import('@/types').Profile>): Promise<void> {
-  if (DEMO_MODE) return;
+  if (isDemoMode()) return;
   const { error } = await supabase.from('profiles').update(updates).eq('id', id);
   if (error) throw error;
 }

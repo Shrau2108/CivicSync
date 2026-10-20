@@ -3,8 +3,14 @@ import type {
   Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, VerificationRecord, Volunteer, VolunteerTaskRequest,
 } from '@/types';
 
-const hasDemoSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
-export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true' || !isSupabaseConfigured || hasDemoSession;
+export function isDemoMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (import.meta.env.VITE_DEMO_MODE === 'true') return true;
+  if (!isSupabaseConfigured) return true;
+  return Boolean(sessionStorage.getItem('civicsync-demo-role'));
+}
+
+export const DEMO_MODE = false;
 const STORAGE_KEY = 'civicsync-demo-store-v1';
 const DEMO_MEDIA_DATABASE = 'civicsync-demo-media-v1';
 
