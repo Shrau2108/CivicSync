@@ -7,6 +7,22 @@ export function isDemoMode(): boolean {
   if (typeof window === 'undefined') return false;
   if (import.meta.env.VITE_DEMO_MODE === 'true') return true;
   if (!isSupabaseConfigured) return true;
+
+  // If a real authenticated Supabase session exists in localStorage, NEVER use demo mode
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const item = localStorage.getItem(key);
+        if (item && item.includes('"access_token"') && item.includes('"user"')) {
+          return false;
+        }
+      }
+    }
+  } catch {
+    // ignore localStorage errors
+  }
+
   return Boolean(sessionStorage.getItem('civicsync-demo-role'));
 }
 

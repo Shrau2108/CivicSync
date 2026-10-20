@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchProfile = useCallback(
-    async (userId: string, retries = 1, fallbackUser?: User | null): Promise<Profile | null> => {
+    async (userId: string, retries = 2, fallbackUser?: User | null): Promise<Profile | null> => {
       if (!isSupabaseConfigured) return null;
 
       for (let attempt = 0; attempt <= retries; attempt++) {
@@ -132,6 +132,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const loadedProfile = data as Profile;
             checkAndRecordRole(loadedProfile);
             setProfile(loadedProfile);
+
+            // Synchronize auth.users user_metadata if role differs (e.g. upgraded to admin)
+            const target = fallbackUser || userRef.current;
+            if (target && target.user_metadata?.role !== loadedProfile.role) {
+              void supabase.auth.updateUser({
+                data: { role: loadedProfile.role, full_name: loadedProfile.full_name }
+              }).catch(() => {});
+            }
+
             return loadedProfile;
           }
         } catch (err) {
@@ -147,23 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const targetUser = fallbackUser || userRef.current;
       if (targetUser && targetUser.id === userId) {
         const fallback = buildFallbackProfile(targetUser);
-        try {
-          // Attempt background upsert into profiles so database record is provisioned
-          await supabase.from('profiles').upsert(
-            {
-              id: fallback.id,
-              email: fallback.email,
-              full_name: fallback.full_name,
-              phone: fallback.phone,
-              role: fallback.role,
-              is_active: true,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          );
-        } catch {
-          // Ignore RLS restrictions
-        }
         checkAndRecordRole(fallback);
         setProfile(fallback);
         return fallback;
@@ -178,33 +170,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Safety timeout: ensure loading is NEVER stuck on true
     const safetyTimer = setTimeout(() => {
       setLoading(false);
-    }, 1500);
+    }, 2000);
 
     // Check if URL hash indicates password recovery
     if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
       setIsPasswordRecovery(true);
     }
 
-    // 1. If user explicitly activated a demo role session
-    const savedRole =
-      typeof window !== 'undefined'
-        ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null)
-        : null;
-    if (savedRole) {
-      setDemoSession(savedRole);
-      setLoading(false);
-      clearTimeout(safetyTimer);
-      return;
-    }
-
-    // 2. If Supabase is not configured, fall back immediately
+    // If Supabase is not configured, fall back immediately to demo if present
     if (!isSupabaseConfigured) {
+      const savedRole =
+        typeof window !== 'undefined'
+          ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null)
+          : null;
+      if (savedRole) {
+        setDemoSession(savedRole);
+      }
       setLoading(false);
       clearTimeout(safetyTimer);
       return;
     }
 
-    // 3. Live Supabase Session Handling
+    // Live Supabase Session Handling (Checked FIRST - real users always take priority!)
     let mounted = true;
     let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -238,16 +225,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!mounted) return;
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          // Immediately set fallback profile so UI is never blocked
+          // A real user is logged in: clear any temporary demo flags
+          sessionStorage.removeItem('civicsync-demo-role');
+          setSession(initialSession);
+          setUser(initialSession.user);
+
+          // Immediately set initial fallback from metadata so user is never stalled
           const immediateFallback = buildFallbackProfile(initialSession.user);
           setProfile((prev) => prev ?? immediateFallback);
 
           setupRealtimeWatch(initialSession.user.id);
-          await fetchProfile(initialSession.user.id, 1, initialSession.user);
+          // Load live profile from database to get the accurate role (e.g. admin)
+          await fetchProfile(initialSession.user.id, 2, initialSession.user);
+        } else {
+          // No live Supabase session: check if user clicked a quick demo preview
+          const savedRole =
+            typeof window !== 'undefined'
+              ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null)
+              : null;
+          if (savedRole) {
+            setDemoSession(savedRole);
+          } else {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
         }
       } catch (err) {
         console.error('Session loading error:', err);
@@ -266,23 +270,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsPasswordRecovery(true);
       }
 
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-
       if (newSession?.user) {
+        sessionStorage.removeItem('civicsync-demo-role');
+        setSession(newSession);
+        setUser(newSession.user);
+
         const immediateFallback = buildFallbackProfile(newSession.user);
         setProfile((prev) => prev ?? immediateFallback);
 
         setupRealtimeWatch(newSession.user.id);
         try {
-          await fetchProfile(newSession.user.id, 1, newSession.user);
+          await fetchProfile(newSession.user.id, 2, newSession.user);
         } finally {
           if (mounted) setLoading(false);
           clearTimeout(safetyTimer);
         }
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
         setProfile(null);
-        setLoading(false);
+        if (mounted) setLoading(false);
         clearTimeout(safetyTimer);
       }
     });
@@ -365,10 +372,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       sessionStorage.removeItem('civicsync-demo-role');
+      const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined;
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
+          emailRedirectTo,
           data: {
             full_name: fullName.trim(),
             role,
