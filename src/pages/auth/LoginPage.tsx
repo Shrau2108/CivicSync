@@ -14,7 +14,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [demoRole, setDemoRole] = useState<'citizen' | 'supervisor' | 'volunteer' | 'admin'>('citizen');
+  const [demoRole, setDemoRole] = useState<'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin'>('citizen');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -47,7 +47,7 @@ export function LoginPage() {
             <strong>Explore the interface</strong>
             <p className="mt-1">Preview a role without creating an account or changing Supabase data.</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {(['citizen', 'supervisor', 'volunteer', 'admin'] as const).map((option) => (
+              {(['citizen', 'supervisor', 'volunteer', 'analyst', 'admin'] as const).map((option) => (
                 <button key={option} type="button" onClick={() => startDemoSession(option)} className="rounded-md border border-amber-300 bg-card px-2 py-2 text-xs capitalize text-muted-foreground hover:border-primary-500 hover:text-primary-700">
                   {option === 'admin' ? 'Administrator' : option}
                 </button>

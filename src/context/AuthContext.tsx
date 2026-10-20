@@ -13,7 +13,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, fullName: string, role: UserRole, phone?: string) => Promise<{ error: string | null; message?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  startDemoSession: (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => void;
+  startDemoSession: (role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => void;
   demoMode: boolean;
 }
 
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const setDemoSession = useCallback((role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+  const setDemoSession = useCallback((role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => {
     const demo = demoRoleProfile(role);
     const demoUser = { id: demo.id, email: demo.email, app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: demo.created_at } as User;
     setUser(demoUser);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (DEMO_MODE) {
-      const savedRole = sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null;
+      const savedRole = sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin' | null;
       if (savedRole) setDemoSession(savedRole);
       setLoading(false);
       return;
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     if (DEMO_MODE) {
-      const role = email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : email.includes('admin') ? 'admin' : 'citizen';
+      const role = email.includes('analyst') ? 'analyst' : email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : email.includes('admin') ? 'admin' : 'citizen';
       sessionStorage.setItem('civicsync-demo-role', role);
       setDemoSession(role);
       return { error: null };
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? formatAuthError(error.message) : null };
   };
 
-  const startDemoSession = (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+  const startDemoSession = (role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => {
     sessionStorage.setItem('civicsync-demo-role', role);
     window.location.reload();
   };

@@ -1,5 +1,5 @@
 import type {
-  Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, Volunteer,
+  Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, Volunteer,
 } from '@/types';
 
 const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -12,6 +12,7 @@ const demoProfiles: Profile[] = [
   { id: 'demo-citizen', email: 'citizen@demo.local', full_name: 'Demo Citizen', phone: null, role: 'citizen', avatar_url: null, is_active: true, created_at: now, updated_at: now },
   { id: 'demo-supervisor', email: 'supervisor@demo.local', full_name: 'Demo Supervisor', phone: null, role: 'supervisor', avatar_url: null, is_active: true, created_at: now, updated_at: now },
   { id: 'demo-volunteer', email: 'volunteer@demo.local', full_name: 'Demo Volunteer', phone: null, role: 'volunteer', avatar_url: null, is_active: true, created_at: now, updated_at: now },
+  { id: 'demo-analyst', email: 'analyst@demo.local', full_name: 'Demo Analyst', phone: null, role: 'analyst', avatar_url: null, is_active: true, created_at: now, updated_at: now },
   { id: 'demo-admin', email: 'admin@demo.local', full_name: 'Demo Administrator', phone: null, role: 'admin', avatar_url: null, is_active: true, created_at: now, updated_at: now },
 ];
 
@@ -80,7 +81,7 @@ export function demoProfile(id: string): Profile {
   return demoProfiles.find((profile) => profile.id === id) || demoProfiles[0];
 }
 
-export function demoRoleProfile(role: 'citizen' | 'supervisor' | 'volunteer' | 'admin'): Profile {
+export function demoRoleProfile(role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin'): Profile {
   return demoProfiles.find((profile) => profile.role === role) || demoProfiles[0];
 }
 
@@ -220,6 +221,13 @@ export function demoUpdateTaskStatus(taskId: string, status: string): void {
     }
     task.assignments?.forEach((assignment) => syncDemoVolunteerWorkload(store, assignment.volunteer_id));
   }
+  writeStore(store);
+}
+
+export function demoAddEvidence(taskId: string, evidence: Evidence): void {
+  const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error('Demo task not found');
+  task.evidence = [...(task.evidence || []), evidence];
   writeStore(store);
 }
 
