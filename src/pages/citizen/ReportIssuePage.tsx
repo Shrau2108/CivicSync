@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Upload, MapPin, CheckCircle2, ArrowRight, ArrowLeft, X, Image as ImageIcon, Loader2,
   Trash2, Construction, Lightbulb, Droplets, Stethoscope, Waves, GraduationCap, UtensilsCrossed, Home, HelpCircle,
+  Play, Film, Eye,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
@@ -437,21 +438,51 @@ export function ReportIssuePage() {
             </label>
 
             {files.length > 0 && (
-              <div className="space-y-2">
-                {files.map((file, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border">
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-muted-foreground truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
-                    <button type="button" onClick={() => removeFile(i)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+                  <span>Attached Evidence ({files.length} file{files.length === 1 ? '' : 's'})</span>
+                  <span>Click file to preview</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {files.map((file, i) => {
+                    const isVid = file.type.startsWith('video/');
+                    const url = URL.createObjectURL(file);
+                    const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+                    return (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border shadow-sm group hover:border-primary/50 transition-all">
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0 relative border border-border/60">
+                          {isVid ? (
+                            <div className="relative w-full h-full bg-black/60 flex items-center justify-center">
+                              <video src={url} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <Play className="w-5 h-5 text-white fill-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <img src={url} alt={file.name} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              {ext}
+                            </span>
+                            <p className="text-sm font-medium text-foreground truncate" title={file.name}>{file.name}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          title="Remove file"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -508,9 +539,41 @@ export function ReportIssuePage() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Coordinates</p>
                 <p className="text-sm text-muted-foreground mt-1">{latitude?.toFixed(4)}, {longitude?.toFixed(4)}</p>
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Evidence Files</p>
-                <p className="text-sm text-muted-foreground mt-1">{files.length} file(s)</p>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Evidence Files ({files.length} file{files.length === 1 ? '' : 's'})
+                </p>
+                {files.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {files.map((file, i) => {
+                      const isVid = file.type.startsWith('video/');
+                      const url = URL.createObjectURL(file);
+                      const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+                      return (
+                        <div key={i} className="relative group rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+                          {isVid ? (
+                            <div className="relative w-full h-24 bg-black/50 flex items-center justify-center">
+                              <video src={url} className="w-full h-24 object-cover" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Play className="w-6 h-6 text-white fill-white/90" />
+                              </div>
+                            </div>
+                          ) : (
+                            <img src={url} alt={file.name} className="w-full h-24 object-cover" />
+                          )}
+                          <div className="p-2 bg-card/95 border-t border-border/60">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground">{ext}</span>
+                              <p className="text-xs text-foreground truncate">{file.name}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No evidence files attached</p>
+                )}
               </div>
             </div>
 

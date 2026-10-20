@@ -14,6 +14,7 @@ import {
   SearchX,
   SlidersHorizontal,
   X,
+  Play,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchCategories, fetchReports } from '@/services/api';
@@ -781,10 +782,23 @@ export function CommunityMap({
                     className={`w-full rounded-2xl border p-3 text-left transition ${selectedReport?.id === report.id ? 'border-cyan-500/60 bg-cyan-500/5' : 'border-slate-800 bg-slate-900/70 hover:border-slate-700 hover:bg-slate-900'}`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-14 w-14 overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-slate-200">
-                          <MapPin className="h-6 w-6 text-cyan-300" />
-                        </div>
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-800 relative">
+                        {report.media && report.media[0] ? (
+                          (report.media[0].file_type === 'video' || !!report.media[0].file_name?.match(/\.(mp4|mov|webm|ogg|m4v)$/i) || report.media[0].file_url.startsWith('data:video/')) ? (
+                            <div className="relative h-full w-full bg-slate-950 flex items-center justify-center">
+                              <video src={report.media[0].file_url} className="h-full w-full object-cover" preload="metadata" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Play className="w-4 h-4 text-white fill-white/90" />
+                              </div>
+                            </div>
+                          ) : (
+                            <img src={report.media[0].file_url} alt="" className="h-full w-full object-cover" />
+                          )
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900 text-slate-200">
+                            <MapPin className="h-6 w-6 text-cyan-300" />
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">

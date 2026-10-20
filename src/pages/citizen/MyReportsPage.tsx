@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Search, PlusCircle } from 'lucide-react';
+import { FileText, Search, PlusCircle, Play } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
@@ -37,11 +37,12 @@ export function MyReportsPage() {
     load();
     if (!user) return;
     
-    // Subscribe to realtime updates for this user's reports
-    const channel = supabase.channel('my_reports_changes')
+    // Subscribe to realtime updates
+    const filter = profile?.role === 'admin' ? undefined : `reporter_id=eq.${user.id}`;
+    const channel = supabase.channel(`my_reports_${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'reports', filter: `reporter_id=eq.${user.id}` },
+        filter ? { event: '*', schema: 'public', table: 'reports', filter } : { event: '*', schema: 'public', table: 'reports' },
         () => {
           load();
         }
@@ -51,7 +52,7 @@ export function MyReportsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [load, user]);
+  }, [load, user, profile?.role]);
 
   const filtered = reports.filter(r => {
     const matchesSearch = !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.report_id.toLowerCase().includes(search.toLowerCase());
@@ -111,6 +112,33 @@ export function MyReportsPage() {
               <Card hoverable>
                 <CardBody>
                   <div className="flex items-start justify-between gap-3">
+                    {/* Media Thumbnail Preview */}
+                    {report.media && report.media.length > 0 && (
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-900 border border-border flex-shrink-0 relative shadow-sm">
+                        {(() => {
+                          const firstMedia = report.media[0];
+                          const isVid = firstMedia.file_type === 'video' || !!firstMedia.file_name?.match(/\.(mp4|mov|webm|ogg|m4v)$/i) || firstMedia.file_url.startsWith('data:video/');
+                          if (isVid) {
+                            return (
+                              <div className="w-full h-full bg-black/60 flex items-center justify-center relative">
+                                <video src={firstMedia.file_url} className="w-full h-full object-cover" preload="metadata" />
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                  <Play className="w-5 h-5 text-white fill-white/90 drop-shadow" />
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <img src={firstMedia.file_url} alt="" className="w-full h-full object-cover" />
+                          );
+                        })()}
+                        {report.media.length > 1 && (
+                          <span className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-1.5 py-0.2 rounded font-mono font-medium">
+                            +{report.media.length - 1}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-mono text-muted-foreground">{report.report_id}</span>

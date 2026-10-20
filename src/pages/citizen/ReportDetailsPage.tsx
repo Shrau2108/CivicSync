@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
-  ArrowLeft, MapPin, CheckCircle2, MessageSquare,
+  ArrowLeft, MapPin, CheckCircle2, MessageSquare, Maximize2, X, Download, ExternalLink, Play,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
@@ -11,7 +11,7 @@ import { LoadingState, ErrorState } from '@/components/ui/States';
 import { fetchReportById, fetchFeedbackForReport } from '@/services/api';
 import { supabase } from '@/lib/supabase';
 import { formatDateTime, timeAgo } from '@/lib/utils';
-import type { Report, Feedback } from '@/types';
+import type { Report, Feedback, ReportMedia } from '@/types';
 
 const STATUS_FLOW: { status: string; label: string }[] = [
   { status: 'submitted', label: 'Submitted' },
@@ -34,6 +34,7 @@ export function ReportDetailsPage() {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [previewMedia, setPreviewMedia] = useState<ReportMedia | null>(null);
   const justCreated = (location.state as { justCreated?: boolean })?.justCreated;
 
   const load = useCallback(async () => {
@@ -123,23 +124,46 @@ export function ReportDetailsPage() {
           {/* Media */}
           {report.media && report.media.length > 0 && (
             <Card>
-              <CardHeader><CardTitle>Evidence Media</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Evidence Media ({report.media.length})</CardTitle>
+                <span className="text-xs text-muted-foreground">Click to enlarge</span>
+              </CardHeader>
               <CardBody>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {report.media.map((m) => (
-                    <div key={m.id} className="relative group rounded-lg overflow-hidden border border-border">
-                      {m.file_type === 'image' ? (
-                        <img src={m.file_url} alt={m.file_name || 'Evidence'} className="w-full h-32 object-cover" />
-                      ) : (
-                        <video src={m.file_url} className="w-full h-32 object-cover" controls />
-                      )}
-                      {m.file_hash && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-charcoal-900/70 text-white text-xs px-2 py-1 truncate">
-                          Hash: {m.file_hash.substring(0, 16)}...
+                  {report.media.map((m) => {
+                    const isVid = m.file_type === 'video' || !!m.file_name?.match(/\.(mp4|mov|webm|ogg|m4v)$/i) || m.file_url.startsWith('data:video/');
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => setPreviewMedia(m)}
+                        className="relative group rounded-xl overflow-hidden border border-border bg-card shadow-sm cursor-pointer hover:border-primary/60 transition-all hover:scale-[1.02]"
+                      >
+                        {!isVid ? (
+                          <div className="relative w-full h-36 bg-muted/40">
+                            <img src={m.file_url} alt={m.file_name || 'Evidence'} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-36 bg-black/60 flex items-center justify-center">
+                            <video src={m.file_url} className="w-full h-full object-cover" preload="metadata" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <Play className="w-8 h-8 text-white fill-white/90 drop-shadow-md" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="p-2 bg-card/95 border-t border-border/50 text-xs">
+                          <p className="font-medium text-foreground truncate">{m.file_name || 'Evidence file'}</p>
+                          {m.file_hash && (
+                            <p className="text-[10px] text-muted-foreground truncate font-mono mt-0.5">
+                              Hash: {m.file_hash.substring(0, 12)}...
+                            </p>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardBody>
             </Card>
@@ -277,6 +301,70 @@ export function ReportDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {previewMedia && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full bg-card border border-border rounded-2xl overflow-hidden shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border bg-card/90">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs uppercase font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                  {previewMedia.file_type}
+                </span>
+                <p className="text-sm font-semibold text-foreground truncate">{previewMedia.file_name || 'Evidence Preview'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewMedia.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+                  title="Open full original"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewMedia(null)}
+                  className="btn-ghost p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+                  title="Close preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-black/20 flex items-center justify-center min-h-[300px] max-h-[70vh] overflow-auto">
+              {(() => {
+                const isVid = previewMedia.file_type === 'video' || !!previewMedia.file_name?.match(/\.(mp4|mov|webm|ogg|m4v)$/i) || previewMedia.file_url.startsWith('data:video/');
+                if (isVid) {
+                  return (
+                    <video
+                      src={previewMedia.file_url}
+                      controls
+                      autoPlay
+                      className="max-h-[65vh] max-w-full rounded-lg"
+                    />
+                  );
+                }
+                return (
+                  <img
+                    src={previewMedia.file_url}
+                    alt={previewMedia.file_name || 'Evidence'}
+                    className="max-h-[65vh] max-w-full object-contain rounded-lg"
+                  />
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

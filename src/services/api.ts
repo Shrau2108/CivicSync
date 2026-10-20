@@ -43,7 +43,8 @@ export async function fetchReports(filters?: {
       .select(`
         *,
         category:report_categories(*),
-        location:report_locations(*)
+        location:report_locations(*),
+        media:report_media(*)
       `)
       .order('created_at', { ascending: false });
 
@@ -79,7 +80,7 @@ export async function fetchAllReports(): Promise<Report[]> {
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await supabase
         .from('reports')
-        .select('*, category:report_categories(*), location:report_locations(*)')
+        .select('*, category:report_categories(*), location:report_locations(*), media:report_media(*)')
         .order('created_at', { ascending: false })
         .range(offset, offset + pageSize - 1);
       if (error) throw error;
@@ -125,7 +126,8 @@ export async function fetchReportsByReporter(reporterId: string): Promise<Report
       .select(`
         *,
         category:report_categories(*),
-        location:report_locations(*)
+        location:report_locations(*),
+        media:report_media(*)
       `)
       .eq('reporter_id', reporterId)
       .order('created_at', { ascending: false });
@@ -309,11 +311,45 @@ export async function uploadReportMedia(
     if (error) throw error;
     return data as unknown as ReportMedia;
   } catch (err) {
-    console.warn('uploadReportMedia failed or timed out, returning local object URL:', err);
+    console.warn('uploadReportMedia storage upload failed, saving fallback Data URL to database:', err);
+
+    let resolvedUrl = URL.createObjectURL(file);
+    try {
+      // If file is under 6MB, convert to base64 Data URL so all users can view it even without storage bucket
+      if (file.size < 6 * 1024 * 1024) {
+        resolvedUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(URL.createObjectURL(file));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const { data: dbMedia, error: dbErr } = await supabase
+        .from('report_media')
+        .insert({
+          report_id: reportId,
+          file_url: resolvedUrl,
+          file_type: file.type.startsWith('video') ? 'video' : 'image',
+          file_name: file.name,
+          file_size: file.size,
+          file_hash: null,
+          storage_path: null,
+        })
+        .select()
+        .maybeSingle();
+
+      if (!dbErr && dbMedia) {
+        return dbMedia as unknown as ReportMedia;
+      }
+    } catch {
+      // ignore
+    }
+
     return {
       id: `fallback-media-${Date.now()}`,
       report_id: reportId,
-      file_url: URL.createObjectURL(file),
+      file_url: resolvedUrl,
       file_type: file.type.startsWith('video') ? 'video' : 'image',
       file_name: file.name,
       file_size: file.size,

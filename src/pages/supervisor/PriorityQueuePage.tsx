@@ -14,7 +14,9 @@ import {
   SlidersHorizontal,
   UserCheck,
   Users,
+  Play,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -116,7 +118,19 @@ export function PriorityQueuePage() {
   useEffect(() => {
     void load(true);
     const refreshInterval = window.setInterval(() => { void load(); }, 30000);
-    return () => window.clearInterval(refreshInterval);
+    const channel = supabase.channel('priority_queue_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
+        void load();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        void load();
+      })
+      .subscribe();
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      supabase.removeChannel(channel);
+    };
   }, [load]);
 
   const eligibleReports = useMemo(() => {
@@ -316,13 +330,31 @@ export function PriorityQueuePage() {
             </div>
             {nextEntry ? (
               <>
-                <h2 className="mt-3 text-xl font-semibold text-white sm:text-2xl">{nextEntry.data.title}</h2>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
-                  <span className="font-mono text-slate-300">{nextEntry.data.report_id}</span>
-                  <span>{nextEntry.data.category?.name || 'Uncategorized'}</span>
-                  <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{getReportLocation(nextEntry.data)}</span>
-                  <span>{nextEntry.data.affected_people} affected</span>
-                  <span>{getElapsedTime(nextEntry.waitingTimeHours)} waiting</span>
+                <div className="flex items-start gap-4 mt-3">
+                  {nextEntry.data.media && nextEntry.data.media[0] && (
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shrink-0 relative shadow-md">
+                      {nextEntry.data.media[0].file_type === 'video' || !!nextEntry.data.media[0].file_name?.match(/\.(mp4|mov|webm)$/i) ? (
+                        <div className="w-full h-full bg-black/60 flex items-center justify-center">
+                          <video src={nextEntry.data.media[0].file_url} className="w-full h-full object-cover" preload="metadata" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Play className="w-5 h-5 text-white fill-white/90" />
+                          </div>
+                        </div>
+                      ) : (
+                        <img src={nextEntry.data.media[0].file_url} alt="" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl font-semibold text-white sm:text-2xl">{nextEntry.data.title}</h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+                      <span className="font-mono text-slate-300">{nextEntry.data.report_id}</span>
+                      <span>{nextEntry.data.category?.name || 'Uncategorized'}</span>
+                      <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{getReportLocation(nextEntry.data)}</span>
+                      <span>{nextEntry.data.affected_people} affected</span>
+                      <span>{getElapsedTime(nextEntry.waitingTimeHours)} waiting</span>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize ${getPriorityClasses(nextEntry.level)}`}>{nextEntry.level} priority</span>
@@ -517,7 +549,18 @@ export function PriorityQueuePage() {
                     <div key={entry.id} role="row" className={`grid grid-cols-[52px_112px_minmax(190px,1.5fr)_120px_minmax(160px,1.1fr)_100px_100px_110px_112px_92px_110px] items-center gap-3 px-4 py-3 text-xs ${entry.id === nextEntry?.id ? 'bg-sky-400/5' : 'hover:bg-slate-900/40'}`}>
                       <span className={`font-semibold tabular-nums ${rank === 1 && !isLifecycleView ? 'text-sky-300' : 'text-slate-500'}`}>{isLifecycleView ? '—' : `#${rank}`}</span>
                       <span className="truncate font-mono text-slate-300">{entry.data.report_id}</span>
-                      <Link to={`/app/reports/${entry.data.id}`} className="truncate font-medium text-slate-100 hover:text-sky-300">{entry.data.title}</Link>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {entry.data.media && entry.data.media[0] && (
+                          <div className="w-6 h-6 rounded-md overflow-hidden shrink-0 bg-slate-800 border border-slate-700">
+                            {entry.data.media[0].file_type === 'video' ? (
+                              <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px]">▶</div>
+                            ) : (
+                              <img src={entry.data.media[0].file_url} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                        )}
+                        <Link to={`/app/reports/${entry.data.id}`} className="truncate font-medium text-slate-100 hover:text-sky-300">{entry.data.title}</Link>
+                      </div>
                       <span className="truncate text-slate-400">{entry.data.category?.name || 'Uncategorized'}</span>
                       <span className="truncate text-slate-400" title={getReportLocation(entry.data)}>{getReportLocation(entry.data)}</span>
                       <span className="capitalize text-slate-300">{entry.data.severity || 'Not set'}</span>
