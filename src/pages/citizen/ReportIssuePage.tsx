@@ -1,12 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, CheckCircle2, ArrowRight, ArrowLeft, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import {
+  Upload, MapPin, CheckCircle2, ArrowRight, ArrowLeft, X, Image as ImageIcon, Loader2,
+  Trash2, Construction, Lightbulb, Droplets, Stethoscope, Waves, GraduationCap, UtensilsCrossed, Home, HelpCircle,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { fetchCategories, createReport, createReportLocation, uploadReportMedia } from '@/services/api';
+import { demoCategories } from '@/lib/demoMode';
 import { cn } from '@/lib/utils';
 import type { ReportCategory } from '@/types';
+
+const CATEGORY_ICONS: Record<string, typeof Trash2> = {
+  garbage: Trash2,
+  'road-damage': Construction,
+  streetlight: Lightbulb,
+  'water-leakage': Droplets,
+  medical: Stethoscope,
+  'flood-relief': Waves,
+  education: GraduationCap,
+  food: UtensilsCrossed,
+  shelter: Home,
+  other: HelpCircle,
+};
 
 const SEVERITY_OPTIONS = [
   { value: 'low', label: 'Low', desc: 'Minor inconvenience' },
@@ -22,7 +39,7 @@ export function ReportIssuePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [categories, setCategories] = useState<ReportCategory[]>([]);
+  const [categories, setCategories] = useState<ReportCategory[]>(demoCategories);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -45,9 +62,11 @@ export function ReportIssuePage() {
   const loadCategories = useCallback(async () => {
     try {
       const cats = await fetchCategories();
-      setCategories(cats);
+      if (cats && cats.length > 0) {
+        setCategories(cats);
+      }
     } catch (err) {
-      console.error('Failed to load categories:', err);
+      console.warn('Failed to load categories from database, retaining defaults:', err);
     }
   }, []);
 
@@ -227,22 +246,29 @@ export function ReportIssuePage() {
 
             <div>
               <label className="label">Category <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setCategoryId(cat.id)}
-                    className={cn(
-                      'p-3 rounded-lg border-2 text-center transition-all',
-                      categoryId === cat.id ? 'border-primary bg-primary/10' : 'border-border hover:border-charcoal-300'
-                    )}
-                  >
-                    <p className={cn('text-sm font-medium', categoryId === cat.id ? 'text-primary' : 'text-muted-foreground')}>
-                      {cat.name}
-                    </p>
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                {(categories.length > 0 ? categories : demoCategories).map((cat) => {
+                  const Icon = CATEGORY_ICONS[cat.slug] || HelpCircle;
+                  const isSelected = categoryId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategoryId(cat.id)}
+                      className={cn(
+                        'flex flex-col items-center justify-center p-3 rounded-xl border-2 text-center transition-all gap-1.5 cursor-pointer',
+                        isSelected
+                          ? 'border-primary bg-primary/10 shadow-sm'
+                          : 'border-border bg-card/60 hover:border-primary/40 hover:bg-card'
+                      )}
+                    >
+                      <Icon className={cn('w-5 h-5 transition-transform group-hover:scale-110', isSelected ? 'text-primary' : 'text-muted-foreground')} />
+                      <p className={cn('text-xs font-semibold leading-tight', isSelected ? 'text-primary' : 'text-foreground')}>
+                        {cat.name}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -440,7 +466,9 @@ export function ReportIssuePage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</p>
-                <p className="text-sm text-muted-foreground mt-1">{categories.find(c => c.id === categoryId)?.name || '—'}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {(categories.find((c) => c.id === categoryId) || demoCategories.find((c) => c.id === categoryId))?.name || '—'}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Severity</p>

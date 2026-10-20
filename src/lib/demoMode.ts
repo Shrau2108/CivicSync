@@ -57,10 +57,17 @@ const demoProfiles: Profile[] = [
 ];
 
 export const demoCategories: ReportCategory[] = [
-  ['Garbage', 'garbage'], ['Road Damage', 'road-damage'], ['Streetlight', 'streetlight'],
-  ['Water Leakage', 'water-leakage'], ['Medical', 'medical'], ['Flood Relief', 'flood-relief'],
-  ['Education', 'education'], ['Food', 'food'], ['Shelter', 'shelter'], ['Other', 'other'],
-].map(([name, slug], index) => ({ id: `demo-category-${index + 1}`, name, slug, icon: null, description: null, is_active: true, created_at: now }));
+  { id: '068ee841-7289-433f-9a24-85fd6ea43404', name: 'Garbage', slug: 'garbage', icon: 'Trash2', description: 'Waste collection, illegal dumping, overflowing bins', is_active: true, created_at: now },
+  { id: '19a1adbd-3484-4871-8859-4fadb3833e02', name: 'Road Damage', slug: 'road-damage', icon: 'Construction', description: 'Potholes, cracked pavement, road erosion', is_active: true, created_at: now },
+  { id: '09463ab5-f5f9-4c4d-8ad2-b0a75d440308', name: 'Streetlight', slug: 'streetlight', icon: 'Lightbulb', description: 'Broken or non-functional street lighting', is_active: true, created_at: now },
+  { id: '8fa0953f-343f-44e2-a879-f5c9976c5f05', name: 'Water Leakage', slug: 'water-leakage', icon: 'Droplets', description: 'Pipe bursts, water supply issues, leaks', is_active: true, created_at: now },
+  { id: 'efbb6c28-c8b4-4c04-9c96-d890b2465341', name: 'Medical', slug: 'medical', icon: 'Stethoscope', description: 'Public health hazards, sanitation emergencies', is_active: true, created_at: now },
+  { id: 'b665220d-bae3-48f7-af3f-13df6fba1a77', name: 'Flood Relief', slug: 'flood-relief', icon: 'Waves', description: 'Flooding, waterlogging, drainage overflow', is_active: true, created_at: now },
+  { id: '5768ebd4-03fc-479a-9a3e-765a1a2312d8', name: 'Education', slug: 'education', icon: 'GraduationCap', description: 'School infrastructure, educational access issues', is_active: true, created_at: now },
+  { id: '86be93ab-7a22-469f-b149-2a95b10b22b0', name: 'Food', slug: 'food', icon: 'UtensilsCrossed', description: 'Food distribution, food safety, hunger relief', is_active: true, created_at: now },
+  { id: '06aa68b7-cc25-4e57-9f5a-61390db52ecc', name: 'Shelter', slug: 'shelter', icon: 'Home', description: 'Housing issues, homeless support, shelter needs', is_active: true, created_at: now },
+  { id: '3b93000b-1db3-4aaa-ad9b-4ab9dd29d79f', name: 'Other', slug: 'other', icon: 'CircleHelp', description: 'Uncategorized community issues', is_active: true, created_at: now },
+];
 
 const demoLocation: ReportLocation = {
   id: 'demo-location-1', report_id: 'demo-report-1', address: 'Main Street near the community park',
@@ -69,7 +76,7 @@ const demoLocation: ReportLocation = {
 
 const seedReport: Report = {
   id: 'demo-report-1', report_id: 'RPT-DEMO01', title: 'Pothole near the community park',
-  description: 'A large pothole is affecting traffic and pedestrians near the park entrance.', category_id: 'demo-category-2',
+  description: 'A large pothole is affecting traffic and pedestrians near the park entrance.', category_id: '19a1adbd-3484-4871-8859-4fadb3833e02',
   status: 'submitted', severity: 'high', urgency: 'high', priority_level: 'high', priority_score: 82, affected_people: 24,
   additional_notes: 'Most visible after sunset.', reporter_id: 'demo-citizen', assigned_volunteer_id: null,
   ai_category_confidence: null, ai_category_explanation: null, ai_integration_active: false, is_duplicate: false,
