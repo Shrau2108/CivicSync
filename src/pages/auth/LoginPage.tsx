@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Leaf, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import {
+  Leaf, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle,
+  Users, BriefcaseBusiness, ShieldCheck, Crown,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export function LoginPage() {
-  const { signIn, startDemoSession, demoMode } = useAuth();
+  const { signIn, startDemoSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string })?.from || '/app';
@@ -14,110 +17,163 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [demoRole] = useState<'citizen' | 'supervisor' | 'volunteer' | 'admin'>('citizen');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error } = await signIn(demoMode ? `${demoRole}@demo.local` : email, password);
+
+    const { error: authError } = await signIn(email, password);
     setLoading(false);
-    if (error) {
-      setError(error);
+
+    if (authError) {
+      setError(authError);
     } else {
-      navigate(from);
+      navigate(from, { replace: true });
     }
+  };
+
+  const handleQuickDemo = (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+    startDemoSession(role);
+    navigate(from, { replace: true });
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
+        {/* Brand Logo */}
         <Link to="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
             <Leaf className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-foreground">CivicSync</span>
+          <span className="text-2xl font-bold tracking-tight text-foreground">CivicSync</span>
         </Link>
 
-        <div className="card p-6 sm:p-8">
-          <h1 className="text-xl font-bold text-foreground mb-1">Welcome Back</h1>
-          <p className="text-sm text-muted-foreground mb-6">Sign in to your account to continue</p>
-
-          <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            <strong>Explore the interface</strong>
-            <p className="mt-1">Preview a role without creating an account or changing Supabase data.</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {(['citizen', 'supervisor', 'volunteer', 'admin'] as const).map((option) => (
-                <button key={option} type="button" onClick={() => startDemoSession(option)} className="rounded-md border border-amber-300 bg-card px-2 py-2 text-xs capitalize text-muted-foreground hover:border-primary-500 hover:text-primary-700">
-                  {option === 'admin' ? 'Administrator' : option}
-                </button>
-              ))}
-            </div>
+        {/* Login Card */}
+        <div className="card p-6 sm:p-8 shadow-elevated">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sign in to manage reports, tasks, and community issues
+            </p>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-red-200 text-red-700 text-sm animate-fade-in">
+            <div className="flex items-center gap-2.5 p-3.5 mb-5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm animate-fade-in">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
+          {/* Secure Sign In Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="email"
                   value={email}
-                  disabled={demoMode}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                   className="input pl-10"
-                  placeholder="you@example.com"
+                  placeholder="name@example.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label mb-0">Password</label>
+                <Link to="/reset-password" className="text-xs text-primary hover:text-primary-600 font-medium">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  disabled={demoMode}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                   className="input pl-10 pr-10"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-charcoal-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Link to="/reset-password" className="text-sm text-primary hover:text-primary-700 font-medium">
-                Forgot password?
-              </Link>
-            </div>
-
-            <button type="submit" disabled={loading} className="btn-primary w-full">
+            <button type="submit" disabled={loading} className="btn-primary w-full justify-center">
               {loading ? 'Signing in...' : 'Sign In'}
-              {!loading && <ArrowRight className="w-4 h-4" />}
+              {!loading && <ArrowRight className="w-4 h-4 ml-1.5" />}
             </button>
           </form>
 
+          {/* Quick Demo Personas */}
+          <div className="mt-8 pt-6 border-t border-border">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Quick Role Preview
+              </span>
+              <span className="text-[11px] text-muted-foreground">Test instant access</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('citizen')}
+                className="flex flex-col items-center p-2.5 rounded-xl border border-border bg-card hover:border-primary hover:bg-primary/5 transition-all text-center group"
+              >
+                <Users className="w-4 h-4 text-primary mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-foreground">Citizen</span>
+                <span className="text-[10px] text-muted-foreground">Report issues</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('volunteer')}
+                className="flex flex-col items-center p-2.5 rounded-xl border border-border bg-card hover:border-blue-500 hover:bg-blue-500/5 transition-all text-center group"
+              >
+                <BriefcaseBusiness className="w-4 h-4 text-blue-500 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-foreground">Volunteer</span>
+                <span className="text-[10px] text-muted-foreground">Field tasks</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('supervisor')}
+                className="flex flex-col items-center p-2.5 rounded-xl border border-border bg-card hover:border-amber-500 hover:bg-amber-500/5 transition-all text-center group"
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-500 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-foreground">Supervisor</span>
+                <span className="text-[10px] text-muted-foreground">Verify & assign</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('admin')}
+                className="flex flex-col items-center p-2.5 rounded-xl border border-border bg-card hover:border-purple-500 hover:bg-purple-500/5 transition-all text-center group"
+              >
+                <Crown className="w-4 h-4 text-purple-500 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-foreground">Admin</span>
+                <span className="text-[10px] text-muted-foreground">Management</span>
+              </button>
+            </div>
+          </div>
+
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary hover:text-primary-700 font-medium">
-              Register here
+            <Link to="/register" className="text-primary hover:text-primary-600 font-semibold">
+              Create account
             </Link>
           </p>
         </div>

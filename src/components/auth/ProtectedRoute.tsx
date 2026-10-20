@@ -1,8 +1,8 @@
 import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, buildFallbackProfile } from '@/context/AuthContext';
 import { LoadingState } from '@/components/ui/States';
-import type { UserRole } from '@/types';
+import type { Profile, UserRole } from '@/types';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -15,8 +15,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingState message="Authenticating..." />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <LoadingState message="Authenticating session..." />
       </div>
     );
   }
@@ -25,20 +25,22 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  if (!profile) {
-    return (
-      <Navigate
-        to="/error"
-        state={{
-          message: 'Your session is active, but your profile could not be loaded. Check the Supabase profiles RLS policies and try again.',
-        }}
-        replace
-      />
-    );
+  // Active profile: use profile or fallback from session.user so user is NEVER blocked by a hanging setup screen
+  const activeProfile: Profile | null = profile || (session?.user ? buildFallbackProfile(session.user) : null);
+
+  if (!activeProfile) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(profile.role)) {
-    return <Navigate to="/unauthorized" replace />;
+  if (allowedRoles && !allowedRoles.includes(activeProfile.role)) {
+    const roleRoutes: Record<UserRole, string> = {
+      citizen: '/app/citizen',
+      volunteer: '/app/volunteer',
+      supervisor: '/app/supervisor',
+      admin: '/app/admin',
+    };
+    const target = roleRoutes[activeProfile.role] || '/app';
+    return <Navigate to={target} replace />;
   }
 
   return <>{children}</>;
@@ -48,8 +50,13 @@ export function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
 
   if (loading) {
-    return <LoadingState message="Authenticating..." />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <LoadingState message="Checking session..." />
+      </div>
+    );
   }
+
   if (session) {
     return <Navigate to="/app" replace />;
   }

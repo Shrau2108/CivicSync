@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Save, Brain, Map } from 'lucide-react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { Save, Brain, Map, Database, CheckCircle2, RotateCcw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { fetchSystemSettings, updateSystemSetting, fetchCategories } from '@/services/api';
+import { getSupabaseConfig, saveSupabaseCredentials, clearSupabaseCredentials } from '@/lib/supabase';
 import type { SystemSetting, ReportCategory } from '@/types';
 
 export function SettingsPage() {
@@ -16,6 +17,12 @@ export function SettingsPage() {
 
   const [priorityWeights, setPriorityWeights] = useState({ severity: 40, urgency: 25, affected_people: 20, waiting_time: 15 });
   const [notifChannels, setNotifChannels] = useState({ in_app: true, push: false, sms: false, email: false, whatsapp: false });
+
+  // Supabase Backend Credentials Form
+  const currentSupabase = getSupabaseConfig();
+  const [sbUrl, setSbUrl] = useState(currentSupabase.isConfigured ? currentSupabase.url : '');
+  const [sbKey, setSbKey] = useState(currentSupabase.isConfigured ? currentSupabase.anonKey : '');
+  const [sbSaved, setSbSaved] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +59,23 @@ export function SettingsPage() {
     }
   };
 
+  const handleSaveSupabase = (e: FormEvent) => {
+    e.preventDefault();
+    if (!sbUrl.trim() || !sbKey.trim()) return;
+    saveSupabaseCredentials(sbUrl, sbKey);
+    setSbSaved(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
+  };
+
+  const handleResetSupabase = () => {
+    clearSupabaseCredentials();
+    setSbUrl('');
+    setSbKey('');
+    window.location.reload();
+  };
+
   if (loading) return <LoadingState message="Loading settings..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
@@ -59,16 +83,97 @@ export function SettingsPage() {
   const mapSetting = settings.find(s => s.key === 'map_provider');
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="System Settings"
-        description="Configure priority weights, notifications, and integrations"
+        description="Configure priority weights, notifications, integrations, and database backend"
         action={<button onClick={handleSave} disabled={saving} className="btn-primary"><Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Settings'}</button>}
       />
 
       {saveSuccess && <div className="p-3 mb-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm animate-fade-in">Settings saved successfully</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Supabase Connection */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <CardTitle>Supabase Backend Connection</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Connect or update your Supabase project URL and anon public key
+                  </p>
+                </div>
+              </div>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                currentSupabase.isConfigured
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${currentSupabase.isConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                {currentSupabase.isConfigured ? `Connected (${currentSupabase.source})` : 'Demo Fallback'}
+              </span>
+            </div>
+          </CardHeader>
+          <CardBody>
+            {sbSaved ? (
+              <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span>Supabase credentials saved. Reloading application with live connection...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveSupabase} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label text-xs">Supabase Project URL</label>
+                    <input
+                      type="url"
+                      value={sbUrl}
+                      onChange={(e) => setSbUrl(e.target.value)}
+                      required
+                      placeholder="https://xyzcompany.supabase.co"
+                      className="input text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="label text-xs">Supabase Anon Public Key</label>
+                    <input
+                      type="password"
+                      value={sbKey}
+                      onChange={(e) => setSbKey(e.target.value)}
+                      required
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                      className="input text-xs font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Credentials can also be defined via <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">.env</code> using <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">VITE_SUPABASE_URL</code> and <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">VITE_SUPABASE_ANON_KEY</code>.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {currentSupabase.source === 'localStorage' && (
+                      <button
+                        type="button"
+                        onClick={handleResetSupabase}
+                        className="btn-ghost text-xs text-destructive hover:bg-destructive/10 inline-flex items-center gap-1"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> Reset to Default
+                      </button>
+                    )}
+                    <button type="submit" className="btn-primary text-xs">
+                      Update Supabase Credentials
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </CardBody>
+        </Card>
+
         {/* Priority Weights */}
         <Card>
           <CardHeader><CardTitle>Priority Weights</CardTitle></CardHeader>
@@ -83,7 +188,7 @@ export function SettingsPage() {
                     min={0}
                     max={100}
                     value={value}
-                    onChange={(e) => setPriorityWeights(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
+                    onChange={(e) => setPriorityWeights(prev => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))}
                     className="flex-1"
                   />
                   <input
@@ -106,10 +211,11 @@ export function SettingsPage() {
             {Object.entries(notifChannels).map(([key, value]) => (
               <div key={key} className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm font-medium text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                  <span className="text-sm font-medium text-foreground capitalize">{key.replace(/_/g, ' ')}</span>
                   {key !== 'in_app' && !value && <span className="text-xs text-muted-foreground ml-2">(requires provider setup)</span>}
                 </div>
                 <button
+                  type="button"
                   onClick={() => setNotifChannels(prev => ({ ...prev, [key]: !value }))}
                   className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-primary' : 'bg-muted'}`}
                 >
@@ -129,7 +235,7 @@ export function SettingsPage() {
                 <Brain className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">AI Categorization & Classification</p>
+                <p className="text-sm font-medium text-foreground">AI Categorization &amp; Classification</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {aiSetting?.value && (aiSetting.value as Record<string, unknown>).active
                     ? 'AI integration is active.'
@@ -152,7 +258,7 @@ export function SettingsPage() {
                 <Map className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Map Configuration</p>
+                <p className="text-sm font-medium text-foreground">Map Configuration</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {mapSetting?.value && (mapSetting.value as Record<string, unknown>).api_key_configured
                     ? 'Map provider is configured.'
@@ -172,8 +278,8 @@ export function SettingsPage() {
           <CardBody>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               {categories.map(cat => (
-                <div key={cat.id} className="p-3 rounded-lg bg-background border border-border text-center">
-                  <p className="text-sm font-medium text-muted-foreground">{cat.name}</p>
+                <div key={cat.id} className="p-3 rounded-lg bg-card border border-border text-center">
+                  <p className="text-sm font-medium text-foreground">{cat.name}</p>
                   <span className={`text-xs ${cat.is_active ? 'text-primary' : 'text-muted-foreground'}`}>
                     {cat.is_active ? 'Active' : 'Inactive'}
                   </span>

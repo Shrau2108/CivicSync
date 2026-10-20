@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/auth/ProtectedRoute';
+import { RoleChangeModal } from '@/components/auth/RoleChangeModal';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoadingState } from '@/components/ui/States';
 
@@ -42,23 +43,27 @@ import { SettingsPage } from '@/pages/shared/SettingsPage';
 import { AuditLogsPage } from '@/pages/shared/AuditLogsPage';
 import { FeedbackPage } from '@/pages/shared/FeedbackPage';
 
+import { buildFallbackProfile } from '@/context/AuthContext';
+
 function DashboardRedirect() {
-  const { profile, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   if (loading) return <LoadingState />;
-  if (!profile) return <Navigate to="/login" replace />;
+  const activeProfile = profile || (session?.user ? buildFallbackProfile(session.user) : null);
+  if (!activeProfile) return <Navigate to="/login" replace />;
   const redirectMap: Record<string, string> = {
     citizen: '/app/citizen',
     volunteer: '/app/volunteer',
     supervisor: '/app/supervisor',
     admin: '/app/admin',
   };
-  return <Navigate to={redirectMap[profile.role] || '/app/citizen'} replace />;
+  return <Navigate to={redirectMap[activeProfile.role] || '/app/citizen'} replace />;
 }
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <RoleChangeModal />
         <Routes>
           {/* Public */}
           <Route path="/" element={<LandingPage />} />

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, Map, Bell, Settings, LogOut, Menu, X,
   Home, ClipboardList, PlusCircle, ListChecks, User, Users, ShieldCheck,
   Inbox, Copy, ArrowUpDown, UserCheck, CheckSquare, BarChart3, ScrollText,
-  ClipboardCheck, ChevronRight, Leaf, Moon, Sun, ChevronLeft,
+  ClipboardCheck, ChevronRight, Leaf, Moon, Sun, ChevronLeft, Crown,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -151,11 +151,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {!sidebarCollapsed ? (
             <>
               <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl bg-muted/40">
-                <div className="w-9 h-9 rounded-full bg-primary/15 text-primary font-semibold text-sm flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-primary/15 text-primary font-semibold text-sm flex items-center justify-center flex-shrink-0">
                   {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{profile?.full_name || 'Demo Citizen'}</p>
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <p className="text-sm font-medium text-foreground truncate">{profile?.full_name || 'Demo Citizen'}</p>
+                    <RoleBadge role={role} />
+                  </div>
                   <p className="text-[11px] text-muted-foreground truncate">{profile?.email || 'demo@civicsync.in'}</p>
                 </div>
               </div>
@@ -276,7 +279,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
       )}
 
       <main className={cn('min-w-0 flex-1 pt-16 lg:pt-0 min-h-screen', sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64')}>
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
+          {profile?.role === 'admin' && location.pathname.startsWith('/app/citizen') && (
+            <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50 dark:bg-purple-950/40 dark:border-purple-800/60 p-3.5 text-xs text-purple-900 dark:text-purple-200 animate-fade-in shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                <span>You have an <strong>Administrator</strong> account. You are currently viewing the Citizen portal.</span>
+              </div>
+              <Link to="/app/admin" className="font-semibold text-purple-700 dark:text-purple-300 hover:underline inline-flex items-center gap-1 flex-shrink-0">
+                Go to Admin Dashboard &rarr;
+              </Link>
+            </div>
+          )}
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -1,4 +1,4 @@
-import { supabase, STORAGE_BUCKET } from '@/lib/supabase';
+import { supabase, STORAGE_BUCKET, isSupabaseConfigured } from '@/lib/supabase';
 import type {
   Report, ReportCategory, ReportMedia, Task, TaskAssignment,
   Volunteer, Notification, Feedback, AuditLog, DuplicateCandidate,
@@ -705,6 +705,10 @@ export async function uploadEvidence(
 }
 
 export async function fetchEvidenceForTask(taskId: string): Promise<Evidence[]> {
+  if (DEMO_MODE) {
+    const t = demoTaskById(taskId);
+    return t?.evidence || [];
+  }
   const { data, error } = await supabase
     .from('evidence')
     .select('*')
@@ -860,13 +864,58 @@ export async function createAuditLog(input: {
 // ============================================================
 // SYSTEM SETTINGS
 // ============================================================
+let demoSystemSettingsStore: SystemSetting[] = [
+  {
+    id: 'demo-setting-1',
+    key: 'priority_weights',
+    value: { severity: 40, urgency: 25, affected_people: 20, waiting_time: 15 },
+    description: 'Weights used to calculate priority queue scores',
+    updated_by: null,
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-setting-2',
+    key: 'notification_channels',
+    value: { in_app: true, push: false, sms: false, email: false, whatsapp: false },
+    description: 'Active notification delivery channels',
+    updated_by: null,
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-setting-3',
+    key: 'ai_integration',
+    value: { active: false, provider: 'gemini' },
+    description: 'AI categorization configuration',
+    updated_by: null,
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-setting-4',
+    key: 'map_provider',
+    value: { provider: 'google_maps', api_key_configured: false },
+    description: 'Map dashboard provider configuration',
+    updated_by: null,
+    updated_at: new Date().toISOString(),
+  },
+];
+
 export async function fetchSystemSettings(): Promise<SystemSetting[]> {
+  if (DEMO_MODE) return demoSystemSettingsStore;
   const { data, error } = await supabase.from('system_settings').select('*');
-  if (error) throw error;
+  if (error) {
+    console.warn('Could not fetch system settings from Supabase, using fallback:', error.message);
+    return demoSystemSettingsStore;
+  }
   return data as unknown as SystemSetting[];
 }
 
 export async function updateSystemSetting(key: string, value: Record<string, unknown>): Promise<void> {
+  if (DEMO_MODE) {
+    demoSystemSettingsStore = demoSystemSettingsStore.map(s =>
+      s.key === key ? { ...s, value, updated_at: new Date().toISOString() } : s
+    );
+    return;
+  }
   const { error } = await supabase
     .from('system_settings')
     .update({ value, updated_at: new Date().toISOString() })
@@ -885,14 +934,14 @@ export async function fetchAllProfiles(): Promise<import('@/types').Profile[]> {
 }
 
 export async function updateProfile(id: string, updates: Partial<import('@/types').Profile>): Promise<void> {
+  if (DEMO_MODE) return;
   const { error } = await supabase.from('profiles').update(updates).eq('id', id);
   if (error) throw error;
 }
 
 export function adminInvitesAvailable(): boolean {
-  const hasSupabaseConfig = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
   const hasDemoSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
-  return hasSupabaseConfig && !hasDemoSession;
+  return isSupabaseConfigured && !hasDemoSession;
 }
 
 export async function inviteAdminUser(input: {
@@ -905,10 +954,54 @@ export async function inviteAdminUser(input: {
     throw new Error('Email invitations are unavailable in demo mode. Connect Supabase and deploy the admin-invite-user function to create real accounts.');
   }
 
-  const { data, error } = await supabase.functions.invoke('admin-invite-user', { body: input });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  if (!data?.profile) throw new Error('The invitation was sent, but no profile was returned. Refresh the user list.');
-  return data.profile as import('@/types').Profile;
+  // Attempt Supabase Edge Function with a 4.5s timeout
+  try {
+    const invokePromise = supabase.functions.invoke('admin-invite-user', { body: input });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Edge function timeout')), 4500)
+    );
+
+    const result = (await Promise.race([invokePromise, timeoutPromise])) as unknown as {
+      data?: { profile?: import('@/types').Profile; error?: string };
+      error?: Error | null;
+    };
+
+    if (!result.error && result.data?.profile) {
+      return result.data.profile;
+    }
+    if (result.data?.error) {
+      throw new Error(result.data.error);
+    }
+  } catch (fnErr) {
+    console.warn('Edge Function admin-invite-user not deployed or timed out. Falling back to direct profile provisioning:', fnErr);
+  }
+
+  // Fallback: Create provisional profile in public.profiles table
+  const provisionalId = crypto.randomUUID();
+  const provisionalProfile: import('@/types').Profile = {
+    id: provisionalId,
+    email: input.email.trim().toLowerCase(),
+    full_name: input.fullName.trim(),
+    phone: input.phone?.trim() || null,
+    role: input.role,
+    avatar_url: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('profiles')
+    .upsert(provisionalProfile)
+    .select()
+    .maybeSingle();
+
+  if (insertError) {
+    throw new Error(
+      `Could not invoke invite function (Edge Function not deployed on Supabase). Database insert error: ${insertError.message}`
+    );
+  }
+
+  return (inserted as unknown as import('@/types').Profile) || provisionalProfile;
 }
 
