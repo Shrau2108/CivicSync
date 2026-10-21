@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { hasSupabaseSessionForCurrentProject, isSupabaseConfigured } from '@/lib/supabase';
 import type {
   Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, VerificationRecord, Volunteer, VolunteerTaskRequest,
 } from '@/types';
@@ -8,20 +8,8 @@ export function isDemoMode(): boolean {
   if (import.meta.env.VITE_DEMO_MODE === 'true') return true;
   if (!isSupabaseConfigured) return true;
 
-  // If a real authenticated Supabase session exists in localStorage, NEVER use demo mode
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
-        const item = localStorage.getItem(key);
-        if (item && item.includes('"access_token"') && item.includes('"user"')) {
-          return false;
-        }
-      }
-    }
-  } catch {
-    // ignore localStorage errors
-  }
+  // Only a session for this configured project should override demo mode.
+  if (hasSupabaseSessionForCurrentProject()) return false;
 
   return Boolean(sessionStorage.getItem('civicsync-demo-role'));
 }

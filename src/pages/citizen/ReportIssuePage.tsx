@@ -1,15 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Upload, MapPin, CheckCircle2, ArrowRight, ArrowLeft, X, Image as ImageIcon, Loader2,
+  Upload, MapPin, CheckCircle2, ArrowRight, ArrowLeft, X, Loader2,
   Trash2, Construction, Lightbulb, Droplets, Stethoscope, Waves, GraduationCap, UtensilsCrossed, Home, HelpCircle,
-  Play, Film, Eye,
+  Play,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { fetchCategories, createReport, createReportLocation, uploadReportMedia } from '@/services/api';
-import { demoCategories } from '@/lib/demoMode';
+import { demoCategories, isDemoMode } from '@/lib/demoMode';
 import { cn } from '@/lib/utils';
 import type { ReportCategory } from '@/types';
 
@@ -40,7 +40,8 @@ export function ReportIssuePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [categories, setCategories] = useState<ReportCategory[]>(demoCategories);
+  const [categories, setCategories] = useState<ReportCategory[]>(() => isDemoMode() ? demoCategories : []);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -59,15 +60,18 @@ export function ReportIssuePage() {
   const [gettingLocation, setGettingLocation] = useState(false);
 
   const [files, setFiles] = useState<File[]>([]);
+  const uploadedFiles = useRef<WeakSet<File>>(new WeakSet());
 
   const loadCategories = useCallback(async () => {
     try {
       const cats = await fetchCategories();
-      if (cats && cats.length > 0) {
-        setCategories(cats);
-      }
+      setCategories(cats);
+      setError(cats.length ? null : 'No active report categories are available. Ask an administrator to configure categories in Supabase.');
     } catch (err) {
-      console.warn('Failed to load categories from database, retaining defaults:', err);
+      setCategories([]);
+      setError(err instanceof Error ? `Could not load report categories: ${err.message}` : 'Could not load report categories from Supabase.');
+    } finally {
+      setCategoriesLoading(false);
     }
   }, []);
 
@@ -148,11 +152,6 @@ export function ReportIssuePage() {
     setError(null);
     setUploadProgress(0);
 
-    const safetyTimer = setTimeout(() => {
-      setSubmitting(false);
-      setError('Submission is taking longer than expected. Please check "My Reports" or click Submit to retry.');
-    }, 12000);
-
     try {
       let reportId = createdReportId;
 
@@ -170,31 +169,23 @@ export function ReportIssuePage() {
         setCreatedReportId(reportId);
       }
 
-      try {
-        await createReportLocation({
-          report_id: reportId,
-          address: address.trim() || undefined,
-          latitude: latitude!,
-          longitude: longitude!,
-        });
-      } catch (locErr) {
-        console.warn('Failed to save report location, proceeding with report:', locErr);
-      }
+      await createReportLocation({
+        report_id: reportId,
+        address: address.trim() || undefined,
+        latitude: latitude!,
+        longitude: longitude!,
+      });
 
       for (let i = 0; i < files.length; i++) {
+        if (uploadedFiles.current.has(files[i])) continue;
         setUploadProgress(Math.round(((i / files.length) * 100)));
-        try {
-          await uploadReportMedia(reportId, files[i]);
-        } catch (mediaErr) {
-          console.warn(`Failed to upload media file ${files[i].name}:`, mediaErr);
-        }
+        await uploadReportMedia(reportId, files[i]);
+        uploadedFiles.current.add(files[i]);
       }
       setUploadProgress(100);
 
-      clearTimeout(safetyTimer);
       navigate(`/app/reports/${reportId}`, { state: { justCreated: true } });
     } catch (err) {
-      clearTimeout(safetyTimer);
       setError(err instanceof Error ? err.message : 'Failed to complete submission. You can safely retry.');
       setSubmitting(false);
     }
@@ -264,7 +255,7 @@ export function ReportIssuePage() {
             <div>
               <label className="label">Category <span className="text-red-500">*</span></label>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                {(categories.length > 0 ? categories : demoCategories).map((cat) => {
+                {categories.map((cat) => {
                   const Icon = CATEGORY_ICONS[cat.slug] || HelpCircle;
                   const isSelected = categoryId === cat.id;
                   return (
@@ -287,6 +278,7 @@ export function ReportIssuePage() {
                   );
                 })}
               </div>
+              {categoriesLoading && <p className="text-xs text-muted-foreground mt-2">Loading categories from Supabase...</p>}
             </div>
 
             <div>
@@ -514,7 +506,7 @@ export function ReportIssuePage() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {(categories.find((c) => c.id === categoryId) || demoCategories.find((c) => c.id === categoryId))?.name || '—'}
+                  {categories.find((c) => c.id === categoryId)?.name || '—'}
                 </p>
               </div>
               <div>

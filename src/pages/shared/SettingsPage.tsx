@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState, ErrorState } from '@/components/ui/States';
 import { fetchSystemSettings, updateSystemSetting, fetchCategories } from '@/services/api';
-import { getSupabaseConfig, saveSupabaseCredentials, clearSupabaseCredentials } from '@/lib/supabase';
+import { checkSupabaseConnection, getSupabaseConfig, saveSupabaseCredentials, clearSupabaseCredentials } from '@/lib/supabase';
 import type { SystemSetting, ReportCategory } from '@/types';
 
 export function SettingsPage() {
@@ -23,6 +23,11 @@ export function SettingsPage() {
   const [sbUrl, setSbUrl] = useState(currentSupabase.isConfigured ? currentSupabase.url : '');
   const [sbKey, setSbKey] = useState(currentSupabase.isConfigured ? currentSupabase.anonKey : '');
   const [sbSaved, setSbSaved] = useState(false);
+  const [sbError, setSbError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error' | 'unconfigured'>(
+    currentSupabase.isConfigured ? 'checking' : 'unconfigured'
+  );
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +49,28 @@ export function SettingsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let active = true;
+    if (!currentSupabase.isConfigured) {
+      setConnectionStatus('unconfigured');
+      return () => { active = false; };
+    }
+
+    setConnectionStatus('checking');
+    checkSupabaseConnection().then(() => {
+      if (active) {
+        setConnectionStatus('connected');
+        setConnectionError(null);
+      }
+    }).catch((err: unknown) => {
+      if (active) {
+        setConnectionStatus('error');
+        setConnectionError(err instanceof Error ? err.message : 'Could not reach the Supabase database.');
+      }
+    });
+    return () => { active = false; };
+  }, [currentSupabase.isConfigured]);
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -62,11 +89,16 @@ export function SettingsPage() {
   const handleSaveSupabase = (e: FormEvent) => {
     e.preventDefault();
     if (!sbUrl.trim() || !sbKey.trim()) return;
-    saveSupabaseCredentials(sbUrl, sbKey);
-    setSbSaved(true);
-    setTimeout(() => {
-      window.location.reload();
-    }, 800);
+    setSbError(null);
+    try {
+      saveSupabaseCredentials(sbUrl, sbKey);
+      setSbSaved(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    } catch (err) {
+      setSbError(err instanceof Error ? err.message : 'Could not save Supabase credentials.');
+    }
   };
 
   const handleResetSupabase = () => {
@@ -109,23 +141,43 @@ export function SettingsPage() {
                 </div>
               </div>
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                currentSupabase.isConfigured
+                connectionStatus === 'connected'
                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                  : connectionStatus === 'error'
+                    ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
               }`}>
-                <span className={`w-2 h-2 rounded-full ${currentSupabase.isConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                {currentSupabase.isConfigured ? `Connected (${currentSupabase.source})` : 'Demo Fallback'}
+                <span className={`w-2 h-2 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-emerald-500' : connectionStatus === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                }`} />
+                {connectionStatus === 'connected'
+                  ? `Connected (${currentSupabase.source})`
+                  : connectionStatus === 'checking'
+                    ? 'Checking connection...'
+                    : connectionStatus === 'error'
+                      ? 'Database connection failed'
+                      : 'Demo mode'}
               </span>
             </div>
           </CardHeader>
           <CardBody>
+            {connectionError && (
+              <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                {connectionError}
+              </p>
+            )}
             {sbSaved ? (
               <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <span>Supabase credentials saved. Reloading application with live connection...</span>
               </div>
+            ) : currentSupabase.source === 'env' ? (
+              <p className="text-sm text-muted-foreground">
+                This connection is managed by build environment variables. Update <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">VITE_SUPABASE_URL</code> and <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">VITE_SUPABASE_ANON_KEY</code> in your local <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">.env</code> or deployment settings, then restart or redeploy the app.
+              </p>
             ) : (
               <form onSubmit={handleSaveSupabase} className="space-y-4">
+                {sbError && <p className="text-sm text-red-700 dark:text-red-300">{sbError}</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="label text-xs">Supabase Project URL</label>
@@ -152,7 +204,7 @@ export function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <p className="text-xs text-muted-foreground">
-                    Credentials can also be defined via <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">.env</code> using <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">VITE_SUPABASE_URL</code> and <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">VITE_SUPABASE_ANON_KEY</code>.
+                    Use only the Supabase anon/publishable key here. The service-role key must never be exposed in a browser.
                   </p>
                   <div className="flex items-center gap-2">
                     {currentSupabase.source === 'localStorage' && (

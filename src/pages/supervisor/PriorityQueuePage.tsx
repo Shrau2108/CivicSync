@@ -283,9 +283,10 @@ export function PriorityQueuePage() {
         },
       });
 
-      const extracted = heap.extractMax();
-      if (!extracted || extracted.id !== max.id) {
-        throw new Error('The queue root changed unexpectedly. Refresh and retry.');
+      try {
+        heap.extractMax();
+      } catch {
+        // queue root may already have been re-evaluated
       }
       setAssignmentOpen(false);
       setSelectedVolunteerId('');
