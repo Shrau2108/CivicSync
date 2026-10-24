@@ -83,6 +83,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   citizen: 'Citizen',
   volunteer: 'Volunteer',
   supervisor: 'Supervisor',
+  analyst: 'Analyst',
   admin: 'Administrator',
 };
 

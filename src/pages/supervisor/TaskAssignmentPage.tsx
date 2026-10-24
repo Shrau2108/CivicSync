@@ -32,7 +32,7 @@ export function TaskAssignmentPage() {
       const [r, v, taskRequests] = await Promise.all([fetchReports(), fetchVolunteers(), fetchVolunteerTaskRequests()]);
       const pendingRequestReportIds = new Set(taskRequests.filter((request) => request.status === 'pending').map((request) => request.report_id));
       setReports(r.filter((report) => ['verified', 'prioritized'].includes(report.status) && !pendingRequestReportIds.has(report.id)));
-      setVolunteers(v.filter(vol => vol.is_verified && vol.verification_status === 'verified'));
+      setVolunteers(v);
       setRequests(taskRequests.filter((request) => request.status === 'pending'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -42,6 +42,8 @@ export function TaskAssignmentPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const verifiedVolunteerCount = volunteers.filter((volunteer) => volunteer.is_verified && volunteer.verification_status === 'verified').length;
 
   const volunteerMatches = useMemo(() => {
     if (!assignModal) return [];
@@ -224,7 +226,7 @@ export function TaskAssignmentPage() {
         <div className="p-5">
           {volunteerMatches.length === 0 ? (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
-              <AlertCircle className="w-4 h-4" /> No verified volunteer has an available schedule and remaining workload capacity.
+              <AlertCircle className="w-4 h-4" /> {verifiedVolunteerCount === 0 ? 'No volunteer profile is fully verified yet. Verify a volunteer in Admin → Volunteers.' : 'All verified volunteers are currently unavailable or at workload capacity.'}
             </div>
           ) : (
             <select value={selectedVolunteerId} onChange={(e) => setSelectedVolunteerId(e.target.value)} className="input">

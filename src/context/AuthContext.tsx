@@ -19,7 +19,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, fullName: string, role: UserRole, phone?: string) => Promise<{ error: string | null; message?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  startDemoSession: (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => void;
+  startDemoSession: (role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => void;
   exitDemoSession: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         citizen: '/app/citizen',
         volunteer: '/app/volunteer',
         supervisor: '/app/supervisor',
+        analyst: '/app/analyst',
         admin: '/app/admin',
       };
       const notice: RoleChangeNotice = {
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleChangeNotice(null);
   }, []);
 
-  const setDemoSession = useCallback((role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+  const setDemoSession = useCallback((role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => {
     const demo = demoRoleProfile(role);
     const demoUser = {
       id: demo.id,
@@ -181,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       const savedRole =
         typeof window !== 'undefined'
-          ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null)
+          ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin' | null)
           : null;
       if (savedRole) {
         setDemoSession(savedRole);
@@ -243,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // No live Supabase session: check if user clicked a quick demo preview
           const savedRole =
             typeof window !== 'undefined'
-              ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'admin' | null)
+              ? (sessionStorage.getItem('civicsync-demo-role') as 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin' | null)
               : null;
           if (savedRole) {
             setDemoSession(savedRole);
@@ -305,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string): Promise<{ error: string | null; profile?: Profile | null }> => {
     // If user clicked quick demo or typed a demo.local email
     if (email.endsWith('@demo.local') || (!isSupabaseConfigured && !password)) {
-      const role = email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : email.includes('admin') ? 'admin' : 'citizen';
+      const role = email.includes('analyst') ? 'analyst' : email.includes('supervisor') ? 'supervisor' : email.includes('volunteer') ? 'volunteer' : email.includes('admin') ? 'admin' : 'citizen';
       sessionStorage.setItem('civicsync-demo-role', role);
       setDemoSession(role);
       return { error: null, profile: demoRoleProfile(role) };
@@ -411,7 +412,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const startDemoSession = (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+  const startDemoSession = (role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => {
     sessionStorage.setItem('civicsync-demo-role', role);
     setDemoSession(role);
   };

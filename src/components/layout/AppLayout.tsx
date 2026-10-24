@@ -49,6 +49,13 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: 'Audit Logs', path: '/app/audit', icon: <ScrollText className="w-[18px] h-[18px]" /> },
     { label: 'Vision Model Test', path: '/app/admin/vision-test', icon: <Sparkles className="w-[18px] h-[18px]" /> },
   ],
+  analyst: [
+    { label: 'Dashboard', path: '/app/analyst', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
+    { label: 'Analytics', path: '/app/analytics', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
+    { label: 'Community Map', path: '/app/map', icon: <Map className="w-[18px] h-[18px]" /> },
+    { label: 'Notifications', path: '/app/notifications', icon: <Bell className="w-[18px] h-[18px]" /> },
+    { label: 'Profile', path: '/app/profile', icon: <User className="w-[18px] h-[18px]" /> },
+  ],
   admin: [
     { label: 'Dashboard', path: '/app/admin', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
     { label: 'User Management', path: '/app/admin/users', icon: <Users className="w-[18px] h-[18px]" /> },

@@ -37,6 +37,7 @@ import { VolunteerManagementPage } from '@/pages/admin/VolunteerManagementPage';
 
 import { MapDashboardPage } from '@/pages/shared/MapDashboardPage';
 import { AnalyticsPage } from '@/pages/shared/AnalyticsPage';
+import { AnalystDashboard } from '@/pages/analyst/AnalystDashboard';
 import { NotificationsPage } from '@/pages/shared/NotificationsPage';
 import { ProfilePage } from '@/pages/shared/ProfilePage';
 import { SettingsPage } from '@/pages/shared/SettingsPage';
@@ -55,6 +56,7 @@ function DashboardRedirect() {
     citizen: '/app/citizen',
     volunteer: '/app/volunteer',
     supervisor: '/app/supervisor',
+    analyst: '/app/analyst',
     admin: '/app/admin',
   };
   return <Navigate to={redirectMap[activeProfile.role] || '/app/citizen'} replace />;
@@ -97,6 +99,9 @@ export default function App() {
           <Route path="/app/supervisor/assignment" element={<ProtectedRoute allowedRoles={['supervisor','admin']}><AppLayout><TaskAssignmentPage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/supervisor/verification" element={<ProtectedRoute allowedRoles={['supervisor','admin']}><AppLayout><EvidenceVerificationPage /></AppLayout></ProtectedRoute>} />
 
+          {/* Analyst */}
+          <Route path="/app/analyst" element={<ProtectedRoute allowedRoles={['analyst','admin']}><AppLayout><AnalystDashboard /></AppLayout></ProtectedRoute>} />
+
           {/* Admin */}
           <Route path="/app/admin" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><AdminDashboard /></AppLayout></ProtectedRoute>} />
           <Route path="/app/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><UserManagementPage /></AppLayout></ProtectedRoute>} />
@@ -107,7 +112,7 @@ export default function App() {
 
           {/* Shared */}
           <Route path="/app/map" element={<ProtectedRoute><AppLayout><MapDashboardPage /></AppLayout></ProtectedRoute>} />
-          <Route path="/app/analytics" element={<ProtectedRoute allowedRoles={['supervisor','admin']}><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
+          <Route path="/app/analytics" element={<ProtectedRoute allowedRoles={['supervisor','analyst','admin']}><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/notifications" element={<ProtectedRoute><AppLayout><NotificationsPage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/settings" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
