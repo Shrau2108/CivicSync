@@ -407,6 +407,13 @@ export function demoUpdateTaskStatus(taskId: string, status: string): void {
   writeStore(store);
 }
 
+export function demoAddEvidence(taskId: string, evidence: Evidence): void {
+  const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error('Demo task not found');
+  task.evidence = [...(task.evidence || []), evidence];
+  writeStore(store);
+}
+
 export function demoAcceptTask(taskId: string, volunteerId: string): { success: boolean; error?: string } {
   const store = readStore(); const task = store.tasks.find((item) => item.id === taskId);
   const assignment = task?.assignments?.find((item) => item.volunteer_id === volunteerId && item.status === 'assigned');
