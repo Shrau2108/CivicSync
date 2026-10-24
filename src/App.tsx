@@ -42,6 +42,7 @@ import { ProfilePage } from '@/pages/shared/ProfilePage';
 import { SettingsPage } from '@/pages/shared/SettingsPage';
 import { AuditLogsPage } from '@/pages/shared/AuditLogsPage';
 import { FeedbackPage } from '@/pages/shared/FeedbackPage';
+import { ImageSimilarityTestPage } from '@/pages/shared/ImageSimilarityTestPage';
 
 import { buildFallbackProfile } from '@/context/AuthContext';
 
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="/app/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/settings" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/audit" element={<ProtectedRoute allowedRoles={['supervisor','admin']}><AppLayout><AuditLogsPage /></AppLayout></ProtectedRoute>} />
+          <Route path="/app/admin/vision-test" element={<ProtectedRoute allowedRoles={['supervisor','admin']}><AppLayout><ImageSimilarityTestPage /></AppLayout></ProtectedRoute>} />
           <Route path="/app/feedback/:reportId" element={<ProtectedRoute><AppLayout><FeedbackPage /></AppLayout></ProtectedRoute>} />
 
           {/* Report & Task Details (shared) */}

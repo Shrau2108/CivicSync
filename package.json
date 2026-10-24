@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",

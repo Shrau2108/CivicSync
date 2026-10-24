@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, Map, Bell, Settings, LogOut, Menu, X,
   Home, ClipboardList, PlusCircle, ListChecks, User, Users, ShieldCheck,
   Inbox, Copy, ArrowUpDown, UserCheck, CheckSquare, BarChart3, ScrollText,
-  ClipboardCheck, ChevronRight, Leaf, Moon, Sun, ChevronLeft, Crown,
+  ClipboardCheck, ChevronRight, Leaf, Moon, Sun, ChevronLeft, Crown, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -47,6 +47,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: 'Evidence Verification', path: '/app/supervisor/verification', icon: <ShieldCheck className="w-[18px] h-[18px]" /> },
     { label: 'Analytics', path: '/app/analytics', icon: <BarChart3 className="w-[18px] h-[18px]" /> },
     { label: 'Audit Logs', path: '/app/audit', icon: <ScrollText className="w-[18px] h-[18px]" /> },
+    { label: 'Vision Model Test', path: '/app/admin/vision-test', icon: <Sparkles className="w-[18px] h-[18px]" /> },
   ],
   admin: [
     { label: 'Dashboard', path: '/app/admin', icon: <LayoutDashboard className="w-[18px] h-[18px]" /> },
@@ -64,6 +65,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: 'Community Map', path: '/app/map', icon: <Map className="w-[18px] h-[18px]" /> },
     { label: 'Settings', path: '/app/settings', icon: <Settings className="w-[18px] h-[18px]" /> },
     { label: 'Audit Logs', path: '/app/audit', icon: <ScrollText className="w-[18px] h-[18px]" /> },
+    { label: 'Vision Model Test', path: '/app/admin/vision-test', icon: <Sparkles className="w-[18px] h-[18px]" /> },
   ],
 };
 
