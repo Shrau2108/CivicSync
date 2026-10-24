@@ -346,7 +346,7 @@ export function AdminDashboard() {
         </div>
         <div className="relative mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-800 pt-4 text-xs text-slate-400">
           <span>Average resolution <strong className="ml-1 font-semibold text-slate-100">{formatMetric(meanResolutionDays, 1)} days</strong></span>
-          <span>Verified volunteers <strong className="ml-1 font-semibold text-slate-100">{volunteers.filter((volunteer) => volunteer.is_verified).length}</strong></span>
+          <span>Verified volunteers <strong className="ml-1 font-semibold text-slate-100">{volunteers.filter((volunteer) => volunteer.is_verified && volunteer.verification_status === 'verified').length}</strong></span>
           <span>Audit events <strong className="ml-1 font-semibold text-slate-100">{auditLogs.length}</strong></span>
         </div>
       </header>
@@ -491,7 +491,7 @@ export function AdminDashboard() {
               { label: 'Reports awaiting review', value: pendingReports, to: '/app/supervisor/incoming', icon: FileText, tone: 'text-sky-700' },
               { label: 'Evidence awaiting verification', value: pendingEvidence, to: '/app/admin/verification', icon: ShieldCheck, tone: 'text-amber-700' },
               { label: 'Overdue active tasks', value: overdueTasks.length, to: '/app/admin/tasks', icon: Clock3, tone: overdueTasks.length ? 'text-rose-700' : 'text-emerald-700' },
-              { label: 'Active volunteers', value: volunteers.filter((volunteer) => volunteer.is_verified).length, to: '/app/admin/volunteers', icon: UserCheck, tone: 'text-teal-700' },
+              { label: 'Active volunteers', value: volunteers.filter((volunteer) => volunteer.is_verified && volunteer.verification_status === 'verified').length, to: '/app/admin/volunteers', icon: UserCheck, tone: 'text-teal-700' },
             ].map((item) => {
               const Icon = item.icon;
               return (
