@@ -258,6 +258,16 @@ export function AnalystDashboard() {
     });
   }, [reports, search, statusFilter, priorityFilter]);
 
+  const highCriticalFilteredReports = useMemo(
+    () =>
+      filteredReports.filter(report =>
+        ['high', 'critical'].includes(
+          (report.priority_level || '').trim().toLowerCase()
+        )
+      ),
+    [filteredReports]
+  );
+
   /**
    * Exports the supplied complaint list as an Excel-compatible CSV file.
    */
@@ -322,8 +332,8 @@ export function AnalystDashboard() {
 
   const exportFilteredComplaints = () => {
     downloadCSV(
-      filteredReports,
-      `civicsync-filtered-complaints-${new Date()
+      highCriticalFilteredReports,
+      `civicsync-high-critical-complaints-${new Date()
         .toISOString()
         .slice(0, 10)}.csv`
     );
@@ -716,8 +726,8 @@ export function AnalystDashboard() {
         <CardHeader>
           <CardTitle>Complaint Data Export</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Export all complaints regardless of filters, or export only
-            the complaints currently matching your filters.
+            Export all complaints regardless of filters, or export only high
+            and critical priority complaints matching your current filters.
           </p>
         </CardHeader>
         <CardBody className="flex flex-wrap gap-3">
@@ -734,11 +744,11 @@ export function AnalystDashboard() {
           <button
             type="button"
             onClick={exportFilteredComplaints}
-            disabled={filteredReports.length === 0}
+            disabled={highCriticalFilteredReports.length === 0}
             className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
-            Export Filtered ({filteredReports.length})
+            Export High / Critical ({highCriticalFilteredReports.length})
           </button>
         </CardBody>
       </Card>
