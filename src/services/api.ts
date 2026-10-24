@@ -183,7 +183,7 @@ export async function reviewReport(
 export async function verifyReportAsAnalyst(
   reportId: string
 ): Promise<{ notifiedSupervisors: number; demo: boolean }> {
-  if (DEMO_MODE) {
+  if (isDemoMode()) {
     demoUpdateReportStatus(reportId, 'verified');
     return { notifiedSupervisors: 0, demo: true };
   }
