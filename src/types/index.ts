@@ -1,4 +1,4 @@
-export type UserRole = 'citizen' | 'volunteer' | 'supervisor' | 'admin';
+export type UserRole = 'citizen' | 'volunteer' | 'supervisor' | 'analyst' | 'admin';
 
 export type ReportStatus =
   | 'submitted' | 'under_review' | 'verified' | 'prioritized' | 'assigned'

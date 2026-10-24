@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Crown, BriefcaseBusiness, Users, ArrowRight, LogOut, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Crown, BriefcaseBusiness, Users, ChartNoAxesColumn, ArrowRight, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { UserRole } from '@/types';
 
@@ -9,6 +9,7 @@ const roleIcons: Record<UserRole, typeof Users> = {
   supervisor: ShieldCheck,
   volunteer: BriefcaseBusiness,
   citizen: Users,
+  analyst: ChartNoAxesColumn,
 };
 
 const roleColors: Record<UserRole, { badge: string; text: string }> = {
@@ -16,6 +17,7 @@ const roleColors: Record<UserRole, { badge: string; text: string }> = {
   supervisor: { badge: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300', text: 'text-amber-600' },
   volunteer: { badge: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300', text: 'text-blue-600' },
   citizen: { badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300', text: 'text-emerald-600' },
+  analyst: { badge: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-300', text: 'text-cyan-600' },
 };
 
 export function RoleChangeModal() {

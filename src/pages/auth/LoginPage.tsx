@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Leaf, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle,
-  Users, BriefcaseBusiness, ShieldCheck, Crown,
+  Users, BriefcaseBusiness, ShieldCheck, Crown, BarChart3,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -40,7 +40,7 @@ export function LoginPage() {
     }
   };
 
-  const handleQuickDemo = (role: 'citizen' | 'supervisor' | 'volunteer' | 'admin') => {
+  const handleQuickDemo = (role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => {
     startDemoSession(role);
     navigate(`/app/${role}`, { replace: true });
   };
@@ -134,7 +134,7 @@ export function LoginPage() {
               <span className="text-[11px] text-muted-foreground">Test instant access</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
               <button
                 type="button"
                 onClick={() => handleQuickDemo('citizen')}
@@ -165,6 +165,15 @@ export function LoginPage() {
                 <span className="text-[10px] text-muted-foreground">Verify & assign</span>
               </button>
 
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('analyst')}
+                className="flex flex-col items-center p-2.5 rounded-xl border border-border bg-card hover:border-teal-500 hover:bg-teal-500/5 transition-all text-center group"
+              >
+                <BarChart3 className="w-4 h-4 text-teal-500 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-foreground">Analyst</span>
+                <span className="text-[10px] text-muted-foreground">Insights</span>
+              </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemo('admin')}

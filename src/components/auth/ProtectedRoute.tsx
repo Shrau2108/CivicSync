@@ -37,6 +37,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       citizen: '/app/citizen',
       volunteer: '/app/volunteer',
       supervisor: '/app/supervisor',
+      analyst: '/app/analyst',
       admin: '/app/admin',
     };
     const target = roleRoutes[activeProfile.role] || '/app';
