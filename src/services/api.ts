@@ -160,17 +160,35 @@ export async function reviewReport(
   if (error) throw error;
 }
 
+export async function verifyReportAsAnalyst(
+  reportId: string
+): Promise<{ notifiedSupervisors: number; demo: boolean }> {
+  if (DEMO_MODE) {
+    demoUpdateReportStatus(reportId, 'verified');
+    return { notifiedSupervisors: 0, demo: true };
+  }
+
+  const { data, error } = await supabase.rpc('analyst_verify_report', {
+    p_report_id: reportId,
+  });
+  if (error) throw error;
+  return {
+    notifiedSupervisors: Number(data?.notified_supervisors ?? 0),
+    demo: false,
+  };
+}
+
 export async function updateReportPriority(reportId: string, priorityLevel: string, priorityScore: number, urgency?: string): Promise<void> {
   if (DEMO_MODE) {
     demoUpdateReportPriority(reportId, priorityLevel, priorityScore, urgency);
     return;
   }
-  const updates: Record<string, unknown> = { priority_level: priorityLevel, priority_score: priorityScore };
-  if (urgency) updates.urgency = urgency;
-  const { error } = await supabase
-    .from('reports')
-    .update(updates)
-    .eq('id', reportId);
+  const { error } = await supabase.rpc('update_report_priority', {
+    p_report_id: reportId,
+    p_priority_level: priorityLevel,
+    p_priority_score: priorityScore,
+    p_urgency: urgency ?? null,
+  });
   if (error) throw error;
 }
 

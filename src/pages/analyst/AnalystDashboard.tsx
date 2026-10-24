@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Search,
   Download,
-  ShieldCheck,
 } from 'lucide-react';
 import {
   BarChart,
@@ -38,10 +37,9 @@ import {
   fetchReports,
   fetchCategories,
   updateReportPriority,
+  verifyReportAsAnalyst,
 } from '@/services/api';
 import type { Report, ReportCategory } from '@/types';
-
-type Priority = 'low' | 'medium' | 'high' | 'critical';
 
 const terminalStatuses = [
   'resolved',
@@ -67,96 +65,139 @@ const statuses = [
   'cancelled',
 ];
 
-const priorityScores: Record<Priority, number> = {
-  low: 25,
-  medium: 50,
-  high: 75,
+const priorities = ['critical', 'high', 'medium', 'low'];
+
+const priorityScores: Record<string, number> = {
   critical: 100,
+  high: 80,
+  medium: 55,
+  low: 30,
 };
 
-function prettyLabel(value: string) {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, letter =>
-    letter.toUpperCase()
-  );
+// Normalize database values before comparing them.
+function normalize(value: unknown): string {
+  return String(value ?? '').trim().toLowerCase();
 }
 
-/**
- * Suggests a priority using basic keyword rules.
- * This is a recommendation for Analyst review, not an automatic
- * final decision.
- */
-function suggestComplaintPriority(report: Report): Priority {
-  const text = [
-    report.title,
-    report.description,
-    report.category?.name,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+function prettyLabel(value: string) {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
-  const criticalPatterns = [
-    /\bexposed (electrical |electric )?wire(s)?\b/,
-    /\blive wire(s)?\b/,
-    /\belectrocution\b/,
-    /\bopen manhole\b/,
-    /\bgas leak\b/,
-    /\bbuilding collapse\b/,
-    /\bimmediate danger\b/,
-    /\blife[- ]threatening\b/,
+// A rule-based suggestion only; the analyst makes the final decision.
+function suggestComplaintPriority(report: Report): string {
+  const text = normalize(
+    `${report.title ?? ''} ${report.description ?? ''}`
+  );
+
+  const criticalKeywords = [
+    'exposed electrical wire',
+    'live wire',
+    'electrocution',
+    'open manhole',
+    'gas leak',
+    'building collapse',
+    'immediate danger',
+    'life-threatening',
   ];
 
-  if (criticalPatterns.some(pattern => pattern.test(text))) {
+  const highKeywords = [
+    'severe flooding',
+    'major water leak',
+    'large pothole',
+    'road blocked',
+    'fallen tree',
+    'sewage overflow',
+    'accident risk',
+    'serious hazard',
+    'severe damage',
+  ];
+
+  const mediumKeywords = [
+    'broken streetlight',
+    'damaged footpath',
+    'garbage accumulation',
+    'drain blockage',
+    'damaged road',
+    'water leakage',
+    'minor flooding',
+  ];
+
+  if (criticalKeywords.some((word) => text.includes(word))) {
     return 'critical';
   }
 
-  const highPatterns = [
-    /\bsevere flooding\b/,
-    /\bmajor water leak(age)?\b/,
-    /\blarge pothole\b/,
-    /\broad blocked\b/,
-    /\bfallen tree\b/,
-    /\bsewage overflow\b/,
-    /\baccident risk\b/,
-    /\bserious hazard\b/,
-    /\bsevere damage\b/,
-  ];
-
-  if (highPatterns.some(pattern => pattern.test(text))) {
+  if (highKeywords.some((word) => text.includes(word))) {
     return 'high';
   }
 
-  const mediumPatterns = [
-    /\bbroken streetlight\b/,
-    /\bdamaged footpath\b/,
-    /\bgarbage accumulation\b/,
-    /\bdrain blockage\b/,
-    /\bdamaged road\b/,
-    /\bwater leakage\b/,
-    /\bminor flooding\b/,
-  ];
-
-  if (mediumPatterns.some(pattern => pattern.test(text))) {
+  if (mediumKeywords.some((word) => text.includes(word))) {
     return 'medium';
   }
 
-  // Unknown issues need Analyst review; Low is only a provisional suggestion.
   return 'low';
 }
 
-function priorityClass(priority: string) {
-  switch (priority.toLowerCase()) {
-    case 'critical':
-      return 'bg-red-100 text-red-800';
-    case 'high':
-      return 'bg-orange-100 text-orange-800';
-    case 'medium':
-      return 'bg-amber-100 text-amber-800';
-    case 'low':
-      return 'bg-emerald-100 text-emerald-800';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
+function escapeCSV(value: unknown): string {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCSV(
+  reports: Report[],
+  categories: ReportCategory[],
+  filename: string
+) {
+  const headers = [
+    'Report ID',
+    'Title',
+    'Description',
+    'Category',
+    'Location',
+    'Status',
+    'Priority',
+    'Priority Score',
+    'Created At',
+    'Resolved At',
+  ];
+
+  const rows = reports.map((report) => [
+    report.report_id || report.id,
+    report.title,
+    report.description,
+    report.category?.name ||
+      categories.find((category) => category.id === report.category_id)?.name ||
+      'Uncategorized',
+    report.location?.area ||
+      report.location?.address ||
+      'Not provided',
+    report.status,
+    report.priority_level || 'unassigned',
+    report.priority_score ?? '',
+    report.created_at,
+    report.resolved_at || '',
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(escapeCSV).join(','))
+    .join('\r\n');
+
+  const blob = new Blob(['\uFEFF', csv], {
+    type: 'text/csv;charset=utf-8;',
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  // Keep the object URL alive briefly for Chrome to start the download.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function AnalystDashboard() {
@@ -168,14 +209,10 @@ export function AnalystDashboard() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [priorityDrafts, setPriorityDrafts] = useState<
-    Record<string, Priority>
-  >({});
-  const [savingPriorityId, setSavingPriorityId] = useState<string | null>(
-    null
-  );
-  const [priorityMessage, setPriorityMessage] = useState('');
-  const [exportingAll, setExportingAll] = useState(false);
+  const [priorityDrafts, setPriorityDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
 
   const load = useCallback(async (background = false) => {
     if (!background) setLoading(true);
@@ -194,7 +231,7 @@ export function AnalystDashboard() {
         setError(
           err instanceof Error
             ? err.message
-            : 'Unable to load report analytics.'
+            : 'Unable to load complaint analytics.'
         );
       }
     } finally {
@@ -223,7 +260,7 @@ export function AnalystDashboard() {
   };
 
   const categoryNames = useMemo(
-    () => new Map(categories.map(category => [category.id, category.name])),
+    () => new Map(categories.map((category) => [category.id, category.name])),
     [categories]
   );
 
@@ -232,10 +269,14 @@ export function AnalystDashboard() {
     categoryNames.get(report.category_id || '') ||
     'Uncategorized';
 
+  // FIX: normalize stored and selected priorities before comparison.
+  // High matches only high, not low, medium, or critical.
   const filteredReports = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = normalize(search);
+    const selectedPriority = normalize(priorityFilter);
+    const selectedStatus = normalize(statusFilter);
 
-    return reports.filter(report => {
+    return reports.filter((report) => {
       const matchesSearch =
         !term ||
         [
@@ -245,14 +286,15 @@ export function AnalystDashboard() {
           report.description,
           report.location?.area,
           report.location?.address,
-        ].some(value => value?.toLowerCase().includes(term));
+        ].some((value) => normalize(value).includes(term));
 
       const matchesStatus =
-        statusFilter === 'all' || report.status === statusFilter;
+        selectedStatus === 'all' ||
+        normalize(report.status) === selectedStatus;
 
       const matchesPriority =
-        priorityFilter === 'all' ||
-        (report.priority_level || '').toLowerCase() === priorityFilter;
+        selectedPriority === 'all' ||
+        normalize(report.priority_level) === selectedPriority;
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
@@ -260,157 +302,107 @@ export function AnalystDashboard() {
 
   const highCriticalFilteredReports = useMemo(
     () =>
-      filteredReports.filter(report =>
-        ['high', 'critical'].includes(
-          (report.priority_level || '').trim().toLowerCase()
-        )
+      filteredReports.filter((report) =>
+        ['high', 'critical'].includes(normalize(report.priority_level))
       ),
     [filteredReports]
   );
 
-  /**
-   * Exports the supplied complaint list as an Excel-compatible CSV file.
-   */
-  const downloadCSV = (
-    complaints: Report[],
-    filename: string
-  ) => {
-    const headers = [
-      'Report ID',
-      'Title',
-      'Description',
-      'Category',
-      'Location',
-      'Status',
-      'Priority',
-      'Priority Score',
-      'Created At',
-      'Resolved At',
-    ];
+  const exportAllComplaints = async () => {
+    try {
+      setMessage('Preparing all complaints...');
+      const allReports = await fetchReports();
 
-    const escapeCSV = (value: unknown) => {
-      const text = String(value ?? '');
-      return `"${text.replace(/"/g, '""')}"`;
-    };
+      downloadCSV(
+        allReports,
+        categories,
+        `civicsync-all-complaints-${new Date().toISOString().slice(0, 10)}.csv`
+      );
 
-    const rows = complaints.map(report => [
-      report.report_id || report.id,
-      report.title,
-      report.description,
-      categoryName(report),
-      report.location?.area ||
-        report.location?.address ||
-        'Not provided',
-      report.status,
-      report.priority_level || 'unassigned',
-      report.priority_score ?? '',
-      report.created_at,
-      report.resolved_at || '',
-    ]);
-
-    const csv = [headers, ...rows]
-      .map(row => row.map(escapeCSV).join(','))
-      .join('\r\n');
-
-    const blob = new Blob(['\uFEFF', csv], {
-      type: 'text/csv;charset=utf-8;',
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = filename;
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    // Delay cleanup so the browser can begin the download.
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage(`Exported ${allReports.length} complaint(s).`);
+    } catch (err) {
+      setMessage(
+        err instanceof Error ? err.message : 'Unable to export complaints.'
+      );
+    }
   };
 
   const exportFilteredComplaints = () => {
     downloadCSV(
       highCriticalFilteredReports,
-      `civicsync-high-critical-complaints-${new Date()
-        .toISOString()
-        .slice(0, 10)}.csv`
+      categories,
+      `civicsync-high-critical-complaints-${new Date().toISOString().slice(0, 10)}.csv`
     );
+
+    setMessage(`Exported ${highCriticalFilteredReports.length} high/critical complaint(s).`);
   };
 
-  /**
-   * Fetches the reports again, without dashboard filters, before exporting.
-   * This includes all records returned by fetchReports().
-   */
-  const exportAllComplaints = async () => {
-    setExportingAll(true);
-    setPriorityMessage('');
+  const savePriority = async (report: Report) => {
+    const priority = priorityDrafts[report.id];
 
-    try {
-      const allReports = await fetchReports();
+    if (!priority || !priorities.includes(priority)) return;
 
-      downloadCSV(
-        allReports,
-        `civicsync-all-complaints-${new Date()
-          .toISOString()
-          .slice(0, 10)}.csv`
-      );
-    } catch (err) {
-      setPriorityMessage(
-        err instanceof Error
-          ? `Export failed: ${err.message}`
-          : 'Unable to export all complaints. Please try again.'
-      );
-    } finally {
-      setExportingAll(false);
-    }
-  };
-
-  const saveAnalystPriority = async (
-    reportId: string,
-    priority: Priority
-  ) => {
-    setSavingPriorityId(reportId);
-    setPriorityMessage('');
+    setSavingId(report.id);
+    setMessage('');
 
     try {
       await updateReportPriority(
-        reportId,
+        report.id,
         priority,
         priorityScores[priority],
         priority
       );
 
-      setReports(previous =>
-        previous.map(report =>
-          report.id === reportId
+      setReports((current) =>
+        current.map((item) =>
+          item.id === report.id
             ? {
-                ...report,
-                priority_level: priority,
+                ...item,
+                priority_level: priority as Report['priority_level'],
                 priority_score: priorityScores[priority],
               }
-            : report
+            : item
         )
       );
 
-      setPriorityDrafts(previous => {
-        const updated = { ...previous };
-        delete updated[reportId];
-        return updated;
+      setPriorityDrafts((current) => {
+        const next = { ...current };
+        delete next[report.id];
+        return next;
       });
 
-      setPriorityMessage(
-        `Priority saved for complaint ${reportId}.`
-      );
+      setMessage('Complaint priority updated successfully.');
     } catch (err) {
-      setPriorityMessage(
+      setMessage(
         err instanceof Error
-          ? `Could not save priority: ${err.message}`
-          : 'Could not save priority. Please try again.'
+          ? err.message
+          : 'Could not save the priority. Please try again.'
       );
     } finally {
-      setSavingPriorityId(null);
+      setSavingId(null);
+    }
+  };
+
+  const verifyReport = async (report: Report) => {
+    setVerifyingId(report.id);
+    setMessage('');
+
+    try {
+      const result = await verifyReportAsAnalyst(report.id);
+      await load(true);
+      setMessage(
+        result.demo
+          ? 'Report verified in demo mode. Live supervisor notifications require Supabase.'
+          : `Report verified and ${result.notifiedSupervisors} supervisor(s) notified.`
+      );
+    } catch (err) {
+      setMessage(
+        err instanceof Error
+          ? err.message
+          : 'Could not verify the report. Please try again.'
+      );
+    } finally {
+      setVerifyingId(null);
     }
   };
 
@@ -423,17 +415,15 @@ export function AnalystDashboard() {
   }
 
   const resolvedReports = reports.filter(
-    report => report.status === 'resolved'
+    (report) => normalize(report.status) === 'resolved'
   );
 
   const openReports = reports.filter(
-    report => !terminalStatuses.includes(report.status)
+    (report) => !terminalStatuses.includes(normalize(report.status))
   );
 
-  const highPriority = reports.filter(report =>
-    ['critical', 'high'].includes(
-      (report.priority_level || '').toLowerCase()
-    )
+  const highPriority = reports.filter((report) =>
+    ['high', 'critical'].includes(normalize(report.priority_level))
   );
 
   const resolutionRate = reports.length
@@ -442,7 +432,7 @@ export function AnalystDashboard() {
 
   const categoryCounts = new Map<string, number>();
 
-  reports.forEach(report => {
+  reports.forEach((report) => {
     const name = categoryName(report);
     categoryCounts.set(name, (categoryCounts.get(name) || 0) + 1);
   });
@@ -454,19 +444,16 @@ export function AnalystDashboard() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
-  const priorityCounts = ['critical', 'high', 'medium', 'low'].map(
-    priority => ({
-      priority: prettyLabel(priority),
-      count: reports.filter(
-        report =>
-          (report.priority_level || '').toLowerCase() === priority
-      ).length,
-    })
-  );
+  const priorityData = priorities.map((priority) => ({
+    priority: prettyLabel(priority),
+    count: reports.filter(
+      (report) => normalize(report.priority_level) === priority
+    ).length,
+  }));
 
   const areaCounts = new Map<string, number>();
 
-  reports.forEach(report => {
+  reports.forEach((report) => {
     const area =
       report.location?.area ||
       report.location?.address ||
@@ -483,7 +470,7 @@ export function AnalystDashboard() {
     .slice(0, 5);
 
   const resolvedWithDates = resolvedReports.filter(
-    report => report.resolved_at
+    (report) => report.resolved_at
   );
 
   const averageResolutionDays = resolvedWithDates.length
@@ -503,7 +490,7 @@ export function AnalystDashboard() {
 
   if (highPriority.length) {
     recommendations.push(
-      `${highPriority.length} high or critical priority report(s) may need attention.`
+      `${highPriority.length} high or critical complaint(s) may need attention.`
     );
   }
 
@@ -514,14 +501,12 @@ export function AnalystDashboard() {
   }
 
   if (hotspots[0] && hotspots[0].area !== 'Location not provided') {
-    recommendations.push(
-      `Review recurring issues around ${hotspots[0].area}.`
-    );
+    recommendations.push(`Review recurring issues around ${hotspots[0].area}.`);
   }
 
   if (openReports.length) {
     recommendations.push(
-      `${openReports.length} report(s) remain unresolved; monitor their progress.`
+      `${openReports.length} complaint(s) remain unresolved.`
     );
   }
 
@@ -534,25 +519,29 @@ export function AnalystDashboard() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Analyst view · Automatically refreshes every 30 seconds
+          Analyst dashboard · Automatically refreshes every 30 seconds
         </p>
 
         <button
           type="button"
           onClick={() => void refresh()}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
         >
-          <RefreshCw
-            className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-          />
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           {refreshing ? 'Refreshing...' : 'Refresh reports'}
         </button>
       </div>
 
+      {message && (
+        <p role="status" className="rounded-lg border p-3 text-sm">
+          {message}
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
-          label="Total Reports"
+          label="Total Complaints"
           value={reports.length}
           icon={<FileText className="h-5 w-5 text-primary" />}
         />
@@ -576,41 +565,24 @@ export function AnalystDashboard() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Reports by Category</CardTitle>
+            <CardTitle>Complaints by Category</CardTitle>
           </CardHeader>
           <CardBody className="h-80">
             {categoryData.length ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={categoryData}
-                  layout="vertical"
-                  margin={{ left: 12, right: 16 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    horizontal={false}
-                  />
+                <BarChart data={categoryData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" allowDecimals={false} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    width={110}
-                    tick={{ fontSize: 11 }}
-                  />
+                  <YAxis dataKey="name" type="category" width={110} />
                   <Tooltip />
-                  <Bar
-                    dataKey="count"
-                    name="Reports"
-                    fill="#0d9488"
-                    radius={[0, 4, 4, 0]}
-                  />
+                  <Bar dataKey="count" name="Complaints" fill="#0d9488" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <EmptyState
                 icon={<BarChart3 className="h-8 w-8" />}
                 title="No category data"
-                description="Category insights appear when reports are available."
+                description="Category insights appear when complaints are available."
               />
             )}
           </CardBody>
@@ -622,20 +594,12 @@ export function AnalystDashboard() {
           </CardHeader>
           <CardBody className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={priorityCounts}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                />
+              <BarChart data={priorityData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="priority" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar
-                  dataKey="count"
-                  name="Reports"
-                  fill="#6366f1"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="count" name="Complaints" fill="#6366f1" />
               </BarChart>
             </ResponsiveContainer>
           </CardBody>
@@ -648,19 +612,17 @@ export function AnalystDashboard() {
           <CardBody>
             {hotspots.length ? (
               <div className="space-y-3">
-                {hotspots.map(item => (
+                {hotspots.map((item) => (
                   <div
                     key={item.area}
                     className="flex items-center justify-between gap-3 rounded-lg border p-3"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="truncate text-sm">
-                        {item.area}
-                      </span>
+                      <span className="truncate text-sm">{item.area}</span>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold">
-                      {item.count} report(s)
+                    <span className="text-sm font-semibold">
+                      {item.count} complaint(s)
                     </span>
                   </div>
                 ))}
@@ -681,7 +643,7 @@ export function AnalystDashboard() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <span className="flex items-center gap-2 text-sm">
                 <Clock3 className="h-4 w-4 text-primary" />
-                Unresolved reports
+                Unresolved complaints
               </span>
               <strong>{openReports.length}</strong>
             </div>
@@ -694,11 +656,6 @@ export function AnalystDashboard() {
                   : `${averageResolutionDays} days`}
               </strong>
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Average time uses resolved reports with recorded creation
-              and resolution dates.
-            </p>
           </CardBody>
         </Card>
       </div>
@@ -710,8 +667,8 @@ export function AnalystDashboard() {
         <CardBody>
           {recommendations.length ? (
             <ul className="list-disc space-y-2 pl-5 text-sm">
-              {recommendations.map(recommendation => (
-                <li key={recommendation}>{recommendation}</li>
+              {recommendations.map((item) => (
+                <li key={item}>{item}</li>
               ))}
             </ul>
           ) : (
@@ -724,51 +681,40 @@ export function AnalystDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Complaint Data Export</CardTitle>
+          <CardTitle>Complaints</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Export all complaints regardless of filters, or export only high
-            and critical priority complaints matching your current filters.
-          </p>
-        </CardHeader>
-        <CardBody className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void exportAllComplaints()}
-            disabled={exportingAll}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            {exportingAll ? 'Exporting all...' : 'Export All Complaints'}
-          </button>
-
-          <button
-            type="button"
-            onClick={exportFilteredComplaints}
-            disabled={highCriticalFilteredReports.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Export High / Critical ({highCriticalFilteredReports.length})
-          </button>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Complaints & Priority Review</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            The system suggests a priority from complaint text. The Analyst
-            reviews the suggestion and saves the final priority.
+            Suggested priorities are rule-based. Review the suggestion before saving a priority.
           </p>
         </CardHeader>
 
         <CardBody className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void exportAllComplaints()}
+              className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted"
+            >
+              <Download className="h-4 w-4" />
+              Export All Complaints
+            </button>
+
+            <button
+              type="button"
+              onClick={exportFilteredComplaints}
+              disabled={highCriticalFilteredReports.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              Export High / Critical ({highCriticalFilteredReports.length})
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
-                onChange={event => setSearch(event.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search title, ID, or location"
                 aria-label="Search complaints"
                 className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm"
@@ -777,12 +723,12 @@ export function AnalystDashboard() {
 
             <select
               value={statusFilter}
-              onChange={event => setStatusFilter(event.target.value)}
+              onChange={(event) => setStatusFilter(event.target.value)}
               aria-label="Filter by status"
               className="rounded-lg border bg-background px-3 py-2 text-sm"
             >
               <option value="all">All statuses</option>
-              {statuses.map(status => (
+              {statuses.map((status) => (
                 <option key={status} value={status}>
                   {prettyLabel(status)}
                 </option>
@@ -791,12 +737,12 @@ export function AnalystDashboard() {
 
             <select
               value={priorityFilter}
-              onChange={event => setPriorityFilter(event.target.value)}
+              onChange={(event) => setPriorityFilter(event.target.value)}
               aria-label="Filter by priority"
               className="rounded-lg border bg-background px-3 py-2 text-sm"
             >
               <option value="all">All priorities</option>
-              {['critical', 'high', 'medium', 'low'].map(priority => (
+              {priorities.map((priority) => (
                 <option key={priority} value={priority}>
                   {prettyLabel(priority)}
                 </option>
@@ -805,47 +751,37 @@ export function AnalystDashboard() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Showing {filteredReports.length} of {reports.length} loaded
-            complaint(s).
+            Showing {filteredReports.length} of {reports.length} complaint(s)
           </p>
-
-          {priorityMessage && (
-            <p role="status" className="rounded-lg border p-3 text-sm">
-              {priorityMessage}
-            </p>
-          )}
 
           {filteredReports.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] text-left text-sm">
+              <table className="w-full min-w-[1000px] text-left text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="px-3 py-3 font-medium">Complaint</th>
-                    <th className="px-3 py-3 font-medium">Category</th>
-                    <th className="px-3 py-3 font-medium">Location</th>
-                    <th className="px-3 py-3 font-medium">Status</th>
-                    <th className="px-3 py-3 font-medium">Current</th>
-                    <th className="px-3 py-3 font-medium">Suggested</th>
-                    <th className="px-3 py-3 font-medium">Analyst decision</th>
-                    <th className="px-3 py-3 font-medium">Submitted</th>
+                    <th className="px-3 py-3">Complaint</th>
+                    <th className="px-3 py-3">Category</th>
+                    <th className="px-3 py-3">Location</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Current Priority</th>
+                    <th className="px-3 py-3">Suggested Priority</th>
+                    <th className="px-3 py-3">Review / Save</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {filteredReports.map(report => {
+                  {filteredReports.map((report) => {
                     const suggested = suggestComplaintPriority(report);
-
-                    const currentPriority = (
-                      report.priority_level || ''
-                    ).toLowerCase();
-
+                    const currentPriority =
+                      normalize(report.priority_level) || 'unassigned';
                     const draft =
-                      priorityDrafts[report.id] ||
-                      (['low', 'medium', 'high', 'critical'].includes(
-                        currentPriority
-                      )
-                        ? (currentPriority as Priority)
+                      priorityDrafts[report.id] ??
+                      (priorities.includes(currentPriority)
+                        ? currentPriority
                         : suggested);
+                    const canVerify = ['submitted', 'under_review'].includes(
+                      normalize(report.status)
+                    );
 
                     return (
                       <tr
@@ -853,22 +789,13 @@ export function AnalystDashboard() {
                         className="border-b last:border-0 hover:bg-muted/40"
                       >
                         <td className="px-3 py-3">
-                          <p className="font-medium">
-                            {report.title || 'Untitled complaint'}
-                          </p>
+                          <p className="font-medium">{report.title}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {report.report_id || report.id}
                           </p>
-                          {report.description && (
-                            <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-                              {report.description}
-                            </p>
-                          )}
                         </td>
 
-                        <td className="px-3 py-3">
-                          {categoryName(report)}
-                        </td>
+                        <td className="px-3 py-3">{categoryName(report)}</td>
 
                         <td className="px-3 py-3">
                           {report.location?.area ||
@@ -881,67 +808,65 @@ export function AnalystDashboard() {
                         </td>
 
                         <td className="px-3 py-3">
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-medium ${priorityClass(
-                              currentPriority
-                            )}`}
-                          >
-                            {prettyLabel(currentPriority || 'unassigned')}
-                          </span>
+                          {prettyLabel(currentPriority)}
                         </td>
 
                         <td className="px-3 py-3">
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-medium ${priorityClass(
-                              suggested
-                            )}`}
-                          >
+                          <span className="font-medium">
                             {prettyLabel(suggested)}
                           </span>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Rule-based suggestion
+                            Review before saving
                           </p>
                         </td>
 
                         <td className="px-3 py-3">
                           <div className="flex flex-col gap-2">
+                            {canVerify && (
+                              <button
+                                type="button"
+                                onClick={() => void verifyReport(report)}
+                                disabled={verifyingId === report.id}
+                                className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-600 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                {verifyingId === report.id
+                                  ? 'Verifying...'
+                                  : 'Verify & notify supervisor'}
+                              </button>
+                            )}
                             <select
                               value={draft}
-                              aria-label={`Analyst priority for ${report.title}`}
-                              onChange={event =>
-                                setPriorityDrafts(previous => ({
-                                  ...previous,
-                                  [report.id]: event.target.value as Priority,
+                              onChange={(event) =>
+                                setPriorityDrafts((current) => ({
+                                  ...current,
+                                  [report.id]: event.target.value,
                                 }))
                               }
-                              className="rounded-lg border bg-background px-2 py-2 text-sm"
+                              aria-label={`Choose priority for ${report.title}`}
+                              className="rounded-lg border bg-background px-2 py-2"
                             >
-                              <option value="low">Low</option>
-                              <option value="medium">Medium</option>
-                              <option value="high">High</option>
-                              <option value="critical">Critical</option>
+                              {priorities.map((priority) => (
+                                <option key={priority} value={priority}>
+                                  {prettyLabel(priority)}
+                                </option>
+                              ))}
                             </select>
 
                             <button
                               type="button"
-                              disabled={savingPriorityId === report.id}
-                              onClick={() =>
-                                void saveAnalystPriority(report.id, draft)
+                              onClick={() => void savePriority(report)}
+                              disabled={
+                                savingId === report.id ||
+                                draft === currentPriority
                               }
-                              className="inline-flex items-center justify-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                              className="rounded-lg bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
                             >
-                              <ShieldCheck className="h-3.5 w-3.5" />
-                              {savingPriorityId === report.id
+                              {savingId === report.id
                                 ? 'Saving...'
                                 : 'Save Priority'}
                             </button>
                           </div>
-                        </td>
-
-                        <td className="whitespace-nowrap px-3 py-3">
-                          {new Date(
-                            report.created_at
-                          ).toLocaleDateString()}
                         </td>
                       </tr>
                     );
@@ -953,7 +878,7 @@ export function AnalystDashboard() {
             <EmptyState
               icon={<Search className="h-8 w-8" />}
               title="No matching complaints"
-              description="Try changing the search text or filters."
+              description="Try changing your search or filters. If High is selected, only High priority complaints will appear."
             />
           )}
         </CardBody>
