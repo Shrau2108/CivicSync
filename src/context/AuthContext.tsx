@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const userRef = useRef<User | null>(null);
   userRef.current = user;
+  const profileRequestRef = useRef(0);
 
   const checkAndRecordRole = useCallback((newProfile: Profile): RoleChangeNotice | null => {
     if (typeof window === 'undefined') return null;
@@ -109,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       aud: 'authenticated',
       created_at: demo.created_at,
     } as User;
+    userRef.current = demoUser;
     setUser(demoUser);
     setSession({
       user: demoUser,
@@ -124,6 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(
     async (userId: string, retries = 2, fallbackUser?: User | null): Promise<Profile | null> => {
       if (!isSupabaseConfigured) return null;
+      const requestId = ++profileRequestRef.current;
+
+      const isCurrentRequest = () =>
+        requestId === profileRequestRef.current && userRef.current?.id === userId;
 
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
@@ -133,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', userId)
             .maybeSingle();
 
-          if (!error && data) {
+          if (!error && data && isCurrentRequest()) {
             const loadedProfile = data as Profile;
             checkAndRecordRole(loadedProfile);
             setProfile(loadedProfile);
@@ -159,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // If DB record not found, synthesize a fallback profile to prevent blocking the user
       const targetUser = fallbackUser || userRef.current;
-      if (targetUser && targetUser.id === userId) {
+      if (targetUser && targetUser.id === userId && isCurrentRequest()) {
         const fallback = buildFallbackProfile(targetUser);
         checkAndRecordRole(fallback);
         setProfile(fallback);
@@ -199,31 +205,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Live Supabase Session Handling (Checked FIRST - real users always take priority!)
     let mounted = true;
     let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+    let realtimeUserId: string | null = null;
+
+    const removeRealtimeWatch = () => {
+      if (realtimeChannel) {
+        void supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+      realtimeUserId = null;
+    };
 
     const setupRealtimeWatch = (userId: string) => {
-      try {
-        realtimeChannel = supabase
-          .channel(`profile-watch-${userId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'profiles',
-              filter: `id=eq.${userId}`,
-            },
-            (payload) => {
-              const updated = payload.new as Profile;
-              if (updated && updated.role) {
-                checkAndRecordRole(updated);
-                setProfile(updated);
-              }
+      if (realtimeUserId === userId && realtimeChannel) return;
+      removeRealtimeWatch();
+      realtimeUserId = userId;
+      realtimeChannel = supabase
+        .channel(`profile-watch-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${userId}`,
+          },
+          (payload) => {
+            const updated = payload.new as Profile;
+            if (updated && updated.role && userRef.current?.id === userId) {
+              checkAndRecordRole(updated);
+              setProfile(updated);
             }
-          )
-          .subscribe();
-      } catch (err) {
-        console.warn('Realtime subscription:', err);
-      }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn(`Realtime profile subscription ${status.toLowerCase()}.`);
+          }
+        });
     };
 
     const loadSession = async () => {
@@ -235,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // A real user is logged in: clear any temporary demo flags
           sessionStorage.removeItem('civicsync-demo-role');
           setSession(initialSession);
+          userRef.current = initialSession.user;
           setUser(initialSession.user);
 
           // Immediately set initial fallback from metadata so user is never stalled
@@ -243,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           setupRealtimeWatch(initialSession.user.id);
           // Load live profile from database to get the accurate role (e.g. admin)
-          await fetchProfile(initialSession.user.id, 2, initialSession.user);
+          void fetchProfile(initialSession.user.id, 2, initialSession.user);
         } else {
           // No live Supabase session: check if user clicked a quick demo preview
           const savedRole =
@@ -254,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setDemoSession(savedRole);
           } else {
             setSession(null);
+            userRef.current = null;
             setUser(null);
             setProfile(null);
           }
@@ -268,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void loadSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
 
       if (event === 'PASSWORD_RECOVERY') {
@@ -276,22 +296,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (newSession?.user) {
+        const userChanged = userRef.current?.id !== newSession.user.id;
         sessionStorage.removeItem('civicsync-demo-role');
         setSession(newSession);
+        userRef.current = newSession.user;
         setUser(newSession.user);
 
-        const immediateFallback = buildFallbackProfile(newSession.user);
-        setProfile((prev) => prev ?? immediateFallback);
-
-        setupRealtimeWatch(newSession.user.id);
-        try {
-          await fetchProfile(newSession.user.id, 2, newSession.user);
-        } finally {
-          if (mounted) setLoading(false);
-          clearTimeout(safetyTimer);
+        if (userChanged) {
+          const immediateFallback = buildFallbackProfile(newSession.user);
+          setProfile(immediateFallback);
+          setupRealtimeWatch(newSession.user.id);
         }
+
+        if (userChanged || event === 'USER_UPDATED') {
+          void fetchProfile(newSession.user.id, 2, newSession.user);
+        }
+        setLoading(false);
+        clearTimeout(safetyTimer);
       } else if (event === 'SIGNED_OUT') {
+        profileRequestRef.current += 1;
+        removeRealtimeWatch();
         setSession(null);
+        userRef.current = null;
         setUser(null);
         setProfile(null);
         if (mounted) setLoading(false);
@@ -303,9 +329,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       clearTimeout(safetyTimer);
       authListener.subscription.unsubscribe();
-      if (realtimeChannel) realtimeChannel.unsubscribe();
+      profileRequestRef.current += 1;
+      removeRealtimeWatch();
     };
-  }, []);
+  }, [checkAndRecordRole, fetchProfile, setDemoSession]);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null; profile?: Profile | null }> => {
     // If user clicked quick demo or typed a demo.local email
@@ -350,6 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error: formatAuthError(error.message) };
 
       if (data.user) {
+        userRef.current = data.user;
         setUser(data.user);
         const liveProfile = await fetchProfile(data.user.id, 1, data.user);
         const active = liveProfile || buildFallbackProfile(data.user);
@@ -394,6 +422,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error: formatAuthError(error.message) };
 
       if (data.user) {
+        userRef.current = data.user;
         const fallback = buildFallbackProfile(data.user);
         if (fullName) fallback.full_name = fullName.trim();
         if (role) fallback.role = role;
@@ -425,9 +454,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('civicsync-demo-role');
     setProfile(null);
     setSession(null);
+    userRef.current = null;
     setUser(null);
     if (isSupabaseConfigured) {
-      await supabase.auth.signOut().catch(() => {});
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase sign-out failed:', error);
+      }
     }
   };
 
@@ -438,10 +471,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('civicsync-demo-role');
     setProfile(null);
     setSession(null);
+    userRef.current = null;
     setUser(null);
     setRoleChangeNotice(null);
     if (isSupabaseConfigured) {
-      await supabase.auth.signOut().catch(() => {});
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase sign-out failed:', error);
+      }
     }
   };
 
