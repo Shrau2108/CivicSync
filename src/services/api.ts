@@ -44,6 +44,10 @@ import {
   demoInviteUser,
   demoAuditLogs,
   demoCreateAuditLog,
+  demoDuplicateCandidates,
+  demoCreateDuplicateCandidate,
+  demoResolveDuplicateCandidate,
+  demoAddReportMedia,
 } from '@/lib/demoMode';
 
 // ============================================================
@@ -289,7 +293,31 @@ export async function uploadReportMedia(
   file: File
 ): Promise<ReportMedia> {
   if (isDemoMode()) {
-    return { id: `demo-media-${Date.now()}`, report_id: reportId, file_url: URL.createObjectURL(file), file_type: file.type.startsWith('video') ? 'video' : 'image', file_name: file.name, file_size: file.size, file_hash: null, storage_path: null, created_at: new Date().toISOString() };
+    const fileHash = await computeFileHash(file);
+    let fileUrl = '';
+    try {
+      fileUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(URL.createObjectURL(file));
+        reader.readAsDataURL(file);
+      });
+    } catch {
+      fileUrl = URL.createObjectURL(file);
+    }
+    const media: ReportMedia = {
+      id: `demo-media-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      report_id: reportId,
+      file_url: fileUrl,
+      file_type: file.type.startsWith('video') ? 'video' : 'image',
+      file_name: file.name,
+      file_size: file.size,
+      file_hash: fileHash,
+      storage_path: null,
+      created_at: new Date().toISOString(),
+    };
+    demoAddReportMedia(reportId, media);
+    return media;
   }
 
   const fileExt = file.name.split('.').pop();
@@ -334,6 +362,38 @@ export async function deleteReportMedia(mediaId: string, storagePath: string): P
 // DUPLICATE CANDIDATES
 // ============================================================
 export async function fetchDuplicateCandidates(): Promise<DuplicateCandidate[]> {
+  if (isDemoMode()) {
+    return demoDuplicateCandidates();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('duplicate_candidates')
+      .select(`
+        *,
+        report:reports!duplicate_candidates_report_id_fkey(
+          *,
+          category:report_categories(*),
+          location:report_locations(*),
+          media:report_media(*)
+        ),
+        candidateReport:reports!duplicate_candidates_candidate_report_id_fkey(
+          *,
+          category:report_categories(*),
+          location:report_locations(*),
+          media:report_media(*)
+        )
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      return data as unknown as DuplicateCandidate[];
+    }
+  } catch (err) {
+    console.warn('Nested query on duplicate_candidates failed, falling back to basic join:', err);
+  }
+
   const { data, error } = await supabase
     .from('duplicate_candidates')
     .select(`
@@ -343,8 +403,9 @@ export async function fetchDuplicateCandidates(): Promise<DuplicateCandidate[]> 
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
+
   if (error) throw error;
-  return data as unknown as DuplicateCandidate[];
+  return (data || []) as unknown as DuplicateCandidate[];
 }
 
 export async function createDuplicateCandidate(input: {
@@ -354,6 +415,10 @@ export async function createDuplicateCandidate(input: {
   similarity_score: number;
   similarity_reasons: string;
 }): Promise<void> {
+  if (isDemoMode()) {
+    demoCreateDuplicateCandidate(input);
+    return;
+  }
   const { error } = await supabase.from('duplicate_candidates').insert({
     ...input,
     status: 'pending',
@@ -362,6 +427,10 @@ export async function createDuplicateCandidate(input: {
 }
 
 export async function resolveDuplicateCandidate(id: string, status: string, reviewerId: string): Promise<void> {
+  if (isDemoMode()) {
+    demoResolveDuplicateCandidate(id, status, reviewerId);
+    return;
+  }
   const { error } = await supabase
     .from('duplicate_candidates')
     .update({ status, reviewer_id: reviewerId, reviewed_at: new Date().toISOString() })

@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { fetchCategories, createReport, createReportLocation, uploadReportMedia } from '@/services/api';
+import { runAutomaticDuplicateDetection } from '@/lib/duplicateDetection';
 import { demoCategories, isDemoMode } from '@/lib/demoMode';
 import { cn } from '@/lib/utils';
 import type { ReportCategory } from '@/types';
@@ -183,6 +184,16 @@ export function ReportIssuePage() {
         uploadedFiles.current.add(files[i]);
       }
       setUploadProgress(100);
+
+      // Automatically run multi-signal duplicate detection (location, category, description, and vision similarity)
+      try {
+        await runAutomaticDuplicateDetection({
+          newReportId: reportId,
+          newReportFiles: files,
+        });
+      } catch (dupErr) {
+        console.warn('CivicSync: Automatic duplicate detection notice:', dupErr);
+      }
 
       navigate(`/app/reports/${reportId}`, { state: { justCreated: true } });
     } catch (err) {

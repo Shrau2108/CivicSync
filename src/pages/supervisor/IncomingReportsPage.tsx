@@ -8,7 +8,7 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState, LoadingState, ErrorState } from '@/components/ui/States';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { fetchReports, reviewReport, createDuplicateCandidate } from '@/services/api';
-import { detectDuplicates as detectDups } from '@/lib/duplicateDetection';
+import { detectDuplicatesAsync, serializeDetectionReasons } from '@/lib/duplicateDetection';
 import { formatDate } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import type { Report } from '@/types';
@@ -93,13 +93,15 @@ export function IncomingReportsPage() {
     try {
       const allReports = await fetchReports();
       const otherReports = allReports.filter(r => r.id !== report.id && !['resolved','cancelled','rejected','duplicate'].includes(r.status));
-      const results = detectDups(
+      const results = await detectDuplicatesAsync(
         {
+          id: report.id,
           title: report.title,
           description: report.description,
           category_id: report.category_id,
           latitude: report.location?.latitude,
           longitude: report.location?.longitude,
+          mediaUrl: report.media?.[0]?.file_url,
         },
         otherReports
       );
@@ -110,7 +112,7 @@ export function IncomingReportsPage() {
             candidate_report_id: result.candidateReportId,
             similarity_type: result.similarityType,
             similarity_score: result.similarityScore,
-            similarity_reasons: result.reasons.join('; '),
+            similarity_reasons: serializeDetectionReasons(result),
           });
         }
         alert(`Found ${results.length} potential duplicate(s). Check the Duplicate Review page.`);

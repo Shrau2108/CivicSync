@@ -1,11 +1,11 @@
 import { hasSupabaseSessionForCurrentProject, isSupabaseConfigured } from '@/lib/supabase';
 import type {
-  AuditLog, Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, UserRole, VerificationRecord, Volunteer, VolunteerTaskRequest,
+  AuditLog, DuplicateCandidate, Evidence, Profile, Report, ReportCategory, ReportLocation, ReportMedia, SimilarityType, Task, TaskAssignment, UserRole, VerificationRecord, Volunteer, VolunteerTaskRequest,
 } from '@/types';
 
 export function isDemoMode(): boolean {
   if (typeof window === 'undefined') return false;
-  if (import.meta.env.VITE_DEMO_MODE === 'true') return true;
+  if (import.meta.env?.VITE_DEMO_MODE === 'true') return true;
   if (!isSupabaseConfigured) return true;
 
   // Only a session for this configured project should override demo mode.
@@ -84,6 +84,8 @@ const demoLocation: ReportLocation = {
   latitude: 17.385, longitude: 78.4867, city: 'Demo City', area: 'Central Ward', postal_code: null, created_at: now,
 };
 
+const seedPotholeSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240"><rect width="320" height="240" fill="%23334155"/><circle cx="160" cy="120" r="50" fill="%230f172a" stroke="%2364748b" stroke-width="4"/><path d="M120 110 Q160 80 200 115 Q170 145 120 110" fill="%23020617"/></svg>`;
+
 const seedReport: Report = {
   id: 'demo-report-1', report_id: 'RPT-DEMO01', title: 'Pothole near the community park',
   description: 'A large pothole is affecting traffic and pedestrians near the park entrance.', category_id: '19a1adbd-3484-4871-8859-4fadb3833e02',
@@ -92,6 +94,19 @@ const seedReport: Report = {
   ai_category_confidence: null, ai_category_explanation: null, ai_integration_active: false, is_duplicate: false,
   duplicate_of: null, reviewer_id: null, reviewed_at: null, resolved_at: null, created_at: now, updated_at: now,
   category: demoCategories[1], reporter: demoProfiles[0], location: demoLocation,
+  media: [
+    {
+      id: 'demo-media-seed-1',
+      report_id: 'demo-report-1',
+      file_url: seedPotholeSvg,
+      file_type: 'image',
+      file_name: 'pothole_community_park.svg',
+      file_size: 1024,
+      file_hash: 'd3a846c21e63a8a30c51d6f28a9b31d923bb6d28adca27d819958dc180292723',
+      storage_path: null,
+      created_at: now,
+    },
+  ],
 };
 
 const seedAuditLogs: AuditLog[] = [
@@ -280,6 +295,7 @@ type DemoStore = {
   taskRequests: VolunteerTaskRequest[];
   verificationRecords: VerificationRecord[];
   auditLogs: AuditLog[];
+  duplicateCandidates: DuplicateCandidate[];
 };
 
 function initialStore(): DemoStore {
@@ -301,6 +317,7 @@ function initialStore(): DemoStore {
     taskRequests: [],
     verificationRecords: [],
     auditLogs,
+    duplicateCandidates: [],
     volunteers: [
       {
         id: 'demo-volunteer-record', user_id: 'demo-volunteer', bio: 'Ready to help improve Demo City.', service_area: 'Central Ward',
@@ -364,6 +381,7 @@ function readStore(): DemoStore {
       auditLogs: store.auditLogs && store.auditLogs.length > 0 ? store.auditLogs : base.auditLogs,
       taskRequests: store.taskRequests || [],
       verificationRecords: store.verificationRecords || [],
+      duplicateCandidates: store.duplicateCandidates || [],
     };
   } catch {
     return initialStore();
@@ -1078,6 +1096,89 @@ export function demoCreateAuditLog(input: {
   store.auditLogs.unshift(log);
   writeStore(store);
   return log;
+}
+
+export function demoDuplicateCandidates(): DuplicateCandidate[] {
+  const store = readStore();
+  return (store.duplicateCandidates || [])
+    .filter((candidate) => candidate.status === 'pending')
+    .map((candidate) => {
+      const report = store.reports.find((r) => r.id === candidate.report_id);
+      const candidateReport = store.reports.find((r) => r.id === candidate.candidate_report_id);
+      return {
+        ...candidate,
+        report: report ? enrichReport(report) : undefined,
+        candidateReport: candidateReport ? enrichReport(candidateReport) : undefined,
+      };
+    });
+}
+
+export function demoCreateDuplicateCandidate(input: {
+  report_id: string;
+  candidate_report_id: string;
+  similarity_type: string;
+  similarity_score: number;
+  similarity_reasons: string;
+}): DuplicateCandidate {
+  const store = readStore();
+  store.duplicateCandidates = store.duplicateCandidates || [];
+
+  const existingIdx = store.duplicateCandidates.findIndex(
+    (c) =>
+      (c.report_id === input.report_id && c.candidate_report_id === input.candidate_report_id) ||
+      (c.report_id === input.candidate_report_id && c.candidate_report_id === input.report_id)
+  );
+
+  const candidate: DuplicateCandidate = {
+    id: `demo-dup-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    report_id: input.report_id,
+    candidate_report_id: input.candidate_report_id,
+    similarity_type: input.similarity_type as SimilarityType,
+    similarity_score: input.similarity_score,
+    similarity_reasons: input.similarity_reasons,
+    status: 'pending',
+    reviewer_id: null,
+    reviewed_at: null,
+    created_at: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    store.duplicateCandidates[existingIdx] = {
+      ...store.duplicateCandidates[existingIdx],
+      similarity_score: input.similarity_score,
+      similarity_reasons: input.similarity_reasons,
+      similarity_type: input.similarity_type as SimilarityType,
+    };
+  } else {
+    store.duplicateCandidates.unshift(candidate);
+  }
+
+  writeStore(store);
+  return {
+    ...candidate,
+    report: demoReportById(input.report_id) || undefined,
+    candidateReport: demoReportById(input.candidate_report_id) || undefined,
+  };
+}
+
+export function demoResolveDuplicateCandidate(id: string, status: string, reviewerId?: string): void {
+  const store = readStore();
+  const candidate = (store.duplicateCandidates || []).find((c) => c.id === id);
+  if (candidate) {
+    candidate.status = status as DuplicateCandidate['status'];
+    candidate.reviewer_id = reviewerId || null;
+    candidate.reviewed_at = new Date().toISOString();
+    writeStore(store);
+  }
+}
+
+export function demoAddReportMedia(reportId: string, media: ReportMedia): void {
+  const store = readStore();
+  const report = store.reports.find((r) => r.id === reportId);
+  if (report) {
+    report.media = [...(report.media || []), media];
+    writeStore(store);
+  }
 }
 
 export function demoReset(): void { sessionStorage.removeItem(STORAGE_KEY); }

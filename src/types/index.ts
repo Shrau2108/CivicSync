@@ -15,7 +15,7 @@ export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type AssignmentStatus = 'assigned' | 'accepted' | 'declined' | 'reassigned' | 'cancelled' | 'completed';
 export type VerificationDecision = 'approved' | 'rejected' | 'resubmission_requested';
 export type DuplicateStatus = 'pending' | 'confirmed_duplicate' | 'marked_separate';
-export type SimilarityType = 'text' | 'geographic' | 'file_hash' | 'category';
+export type SimilarityType = 'text' | 'geographic' | 'file_hash' | 'category' | 'visual';
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 export type Proficiency = 'beginner' | 'intermediate' | 'expert';
 
@@ -124,6 +124,17 @@ export interface DuplicateCandidate {
   created_at: string;
   report?: Report;
   candidateReport?: Report;
+  geographic_distance_km?: number | null;
+  detection_explanation?: string;
+  visual_metrics?: {
+    isExactFileMatch?: boolean;
+    sha256A?: string | null;
+    sha256B?: string | null;
+    dHashDistance?: number;
+    embeddingSimilarity?: number | null;
+    classification?: string;
+    modelError?: string | null;
+  } | null;
 }
 
 export interface PriorityScore {

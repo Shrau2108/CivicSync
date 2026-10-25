@@ -22,8 +22,8 @@ export function getSupabaseConfig(): {
   isConfigured: boolean;
   source: 'env' | 'localStorage' | 'none';
 } {
-  const envUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
-  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+  const envUrl = (import.meta.env?.VITE_SUPABASE_URL as string | undefined)?.trim();
+  const envKey = (import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
 
   if (isValidSupabaseConfig(envUrl, envKey)) {
     return { url: envUrl.replace(/\/+$/, ''), anonKey: envKey!, isConfigured: true, source: 'env' };
