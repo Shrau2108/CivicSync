@@ -25,6 +25,12 @@ export type NotificationCategory =
   | 'evidence_submitted' | 'evidence_approved' | 'evidence_rejected'
   | 'report_resolved' | 'feedback_requested' | 'task_request_received' | 'task_request_reviewed';
 
+export interface NotificationPreferences {
+  email_alerts?: boolean;
+  report_updates?: boolean;
+  community_announcements?: boolean;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -32,6 +38,9 @@ export interface Profile {
   phone: string | null;
   role: UserRole;
   avatar_url: string | null;
+  city?: string | null;
+  area?: string | null;
+  notification_preferences?: NotificationPreferences | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -295,9 +304,11 @@ export interface AuditLog {
   entity_type: string;
   entity_id: string | null;
   details: Record<string, unknown> | null;
+  result?: 'success' | 'failed' | string | null;
   ip_address: string | null;
   created_at: string;
   actor?: Profile;
+  target?: Profile | Record<string, unknown>;
 }
 
 export interface SystemSetting {

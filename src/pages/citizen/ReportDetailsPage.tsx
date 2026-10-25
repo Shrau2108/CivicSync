@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import {
-  ArrowLeft, MapPin, CheckCircle2, MessageSquare, Maximize2, X, Download, ExternalLink, Play,
+  ArrowLeft, MapPin, CheckCircle2, MessageSquare, Maximize2, X, ExternalLink, Play,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/layout/AppLayout';

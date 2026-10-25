@@ -13,7 +13,7 @@ const roles: { value: UserRole; label: string; icon: typeof Users; desc: string 
 ];
 
 export function RegisterPage() {
-  const { signUp, isSupabaseConfigured } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState('');

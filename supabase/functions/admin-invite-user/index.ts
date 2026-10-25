@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const allowedRoles = new Set(['citizen', 'volunteer', 'supervisor', 'admin']);
+const allowedRoles = new Set(['citizen', 'volunteer', 'supervisor', 'analyst', 'admin']);
 
 function respond(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -65,10 +65,24 @@ Deno.serve(async (request) => {
   if (phone.length > 32) return respond({ error: 'Phone number must be 32 characters or fewer.' }, 400);
   if (!allowedRoles.has(role)) return respond({ error: 'Select a valid role.' }, 400);
 
+  // Check for duplicate user email before sending invite
+  const { data: existingProfile } = await adminClient
+    .from('profiles')
+    .select('id, email')
+    .eq('email', email)
+    .maybeSingle();
+  if (existingProfile) {
+    return respond({ error: 'An account with this email address already exists.' }, 400);
+  }
+
   const { data: invitation, error: invitationError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName, phone: phone || null },
+    data: { full_name: fullName, phone: phone || null, role },
   });
   if (invitationError || !invitation.user) {
+    const errorMsg = invitationError?.message || '';
+    if (errorMsg.toLowerCase().includes('already') || errorMsg.toLowerCase().includes('registered')) {
+      return respond({ error: 'An account with this email address already exists.' }, 400);
+    }
     return respond({ error: invitationError?.message || 'Supabase did not return the invited user.' }, 400);
   }
 
@@ -84,12 +98,31 @@ Deno.serve(async (request) => {
     return respond({ error: 'The invitation could not be assigned its requested role. No account was kept.' }, 500);
   }
 
+  // Provision corresponding volunteer record if volunteer role was chosen
+  if (role === 'volunteer') {
+    await adminClient
+      .from('volunteers')
+      .upsert({ user_id: profile.id, is_verified: true, verification_status: 'verified' })
+      .select()
+      .maybeSingle();
+  }
+
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('cf-connecting-ip') || null;
   const { error: auditError } = await adminClient.from('audit_logs').insert({
     actor_id: authData.user.id,
     action: 'invite_user',
     entity_type: 'profile',
     entity_id: profile.id,
-    details: { email, role },
+    details: {
+      email,
+      role,
+      target_name: fullName,
+      target_email: email,
+      target_role: role,
+      result: 'success',
+    },
+    ip_address: clientIp,
+    result: 'success',
   });
   if (auditError) console.error('Could not write invitation audit log:', auditError.message);
 

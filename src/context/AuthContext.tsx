@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef, ty
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Profile, UserRole } from '@/types';
-import { DEMO_MODE, demoRoleProfile } from '@/lib/demoMode';
+import { DEMO_MODE, demoRoleProfile, isDemoMode, demoProfile } from '@/lib/demoMode';
 
 export interface RoleChangeNotice {
   fromRole: UserRole;
@@ -19,6 +19,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, fullName: string, role: UserRole, phone?: string) => Promise<{ error: string | null; message?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateProfileLocally: (updates: Partial<Profile>) => void;
   startDemoSession: (role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin') => void;
   exitDemoSession: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
@@ -47,6 +48,9 @@ export function buildFallbackProfile(user: User): Profile {
     phone: (meta.phone as string) || null,
     role,
     avatar_url: (meta.avatar_url as string) || null,
+    city: (meta.city as string) || null,
+    area: (meta.area as string) || null,
+    notification_preferences: (meta.notification_preferences as Profile['notification_preferences']) || null,
     is_active: true,
     created_at: user.created_at || new Date().toISOString(),
     updated_at: user.updated_at || user.created_at || new Date().toISOString(),
@@ -461,8 +465,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
+  const updateProfileLocally = useCallback((updates: Partial<Profile>) => {
+    setProfile((prev) => (prev ? { ...prev, ...updates } : null));
+  }, []);
+
   const refreshProfile = async () => {
-    if (user && isSupabaseConfigured) {
+    if (!user) return;
+    if (isDemoMode()) {
+      const updated = demoProfile(user.id);
+      if (updated) {
+        setProfile(updated);
+      }
+      return;
+    }
+    if (isSupabaseConfigured) {
       await fetchProfile(user.id, 2, user);
     }
   };
@@ -478,6 +494,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         refreshProfile,
+        updateProfileLocally,
         startDemoSession,
         exitDemoSession,
         resetPassword,

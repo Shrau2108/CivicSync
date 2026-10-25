@@ -1,6 +1,6 @@
 import { hasSupabaseSessionForCurrentProject, isSupabaseConfigured } from '@/lib/supabase';
 import type {
-  Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, VerificationRecord, Volunteer, VolunteerTaskRequest,
+  AuditLog, Evidence, Profile, Report, ReportCategory, ReportLocation, Task, TaskAssignment, UserRole, VerificationRecord, Volunteer, VolunteerTaskRequest,
 } from '@/types';
 
 export function isDemoMode(): boolean {
@@ -54,11 +54,16 @@ async function loadDemoEvidenceFile(key: string): Promise<Blob | null> {
 
 const now = new Date().toISOString();
 const demoProfiles: Profile[] = [
-  { id: 'demo-citizen', email: 'citizen@demo.local', full_name: 'Demo Citizen', phone: null, role: 'citizen', avatar_url: null, is_active: true, created_at: now, updated_at: now },
-  { id: 'demo-supervisor', email: 'supervisor@demo.local', full_name: 'Demo Supervisor', phone: null, role: 'supervisor', avatar_url: null, is_active: true, created_at: now, updated_at: now },
-  { id: 'demo-volunteer', email: 'volunteer@demo.local', full_name: 'Demo Volunteer', phone: null, role: 'volunteer', avatar_url: null, is_active: true, created_at: now, updated_at: now },
-  { id: 'demo-analyst', email: 'analyst@demo.local', full_name: 'Demo Analyst', phone: null, role: 'analyst', avatar_url: null, is_active: true, created_at: now, updated_at: now },
-  { id: 'demo-admin', email: 'admin@demo.local', full_name: 'Demo Administrator', phone: null, role: 'admin', avatar_url: null, is_active: true, created_at: now, updated_at: now },
+  { id: 'demo-citizen', email: 'citizen@demo.local', full_name: 'Demo Citizen', phone: '+1 (555) 234-5678', role: 'citizen', avatar_url: null, is_active: true, city: 'Demo City', area: 'Central Ward', created_at: '2026-10-01T09:00:00Z', updated_at: now },
+  { id: 'demo-supervisor', email: 'supervisor@civicsync.local', full_name: 'Supervisor', phone: '+1 (555) 345-6789', role: 'supervisor', avatar_url: null, is_active: true, city: 'Demo City', area: 'Central Ward', created_at: '2026-10-01T09:00:00Z', updated_at: now },
+  { id: 'demo-volunteer', email: 'volunteer@civicsync.local', full_name: 'Volunteer', phone: '+1 (555) 456-7890', role: 'volunteer', avatar_url: null, is_active: true, city: 'Demo City', area: 'Central Ward', created_at: '2026-10-01T09:00:00Z', updated_at: now },
+  { id: 'demo-analyst', email: 'analyst@demo.local', full_name: 'Demo Analyst', phone: '+1 (555) 567-8901', role: 'analyst', avatar_url: null, is_active: true, city: 'Demo City', area: 'Central Ward', created_at: '2026-10-01T09:00:00Z', updated_at: now },
+  { id: 'demo-admin', email: 'admin@civicsync.local', full_name: 'Admin User', phone: '+1 (555) 678-9012', role: 'admin', avatar_url: null, is_active: true, city: 'Demo City', area: 'Central Ward', created_at: '2026-10-01T09:00:00Z', updated_at: now },
+  { id: 'user-rohit', email: 'rohit.sharma@civicsync.local', full_name: 'Rohit Sharma', phone: '+91 98765 43210', role: 'volunteer', avatar_url: null, is_active: true, city: 'Demo City', area: 'Central Ward', created_at: '2026-10-02T10:30:00Z', updated_at: '2026-10-13T18:24:00Z' },
+  { id: 'user-priya', email: 'priya.desai@civicsync.local', full_name: 'Priya Desai', phone: '+91 98765 43211', role: 'volunteer', avatar_url: null, is_active: true, city: 'Demo City', area: 'North District', created_at: '2026-10-05T11:15:00Z', updated_at: '2026-10-13T17:10:00Z' },
+  { id: 'user-amit', email: 'amit.verma@civicsync.local', full_name: 'Amit Verma', phone: '+91 98765 43212', role: 'citizen', avatar_url: null, is_active: false, city: 'Demo City', area: 'East Suburb', created_at: '2026-10-04T08:00:00Z', updated_at: '2026-10-13T11:32:00Z' },
+  { id: 'user-neha', email: 'neha.kapoor@civicsync.local', full_name: 'Neha Kapoor', phone: '+91 98765 43213', role: 'citizen', avatar_url: null, is_active: true, city: 'Demo City', area: 'South Ward', created_at: '2026-10-06T14:20:00Z', updated_at: '2026-10-12T17:14:00Z' },
+  { id: 'user-rahul', email: 'rahul.mehta@civicsync.local', full_name: 'Rahul Mehta', phone: '+91 98765 43214', role: 'volunteer', avatar_url: null, is_active: true, city: 'Demo City', area: 'West Zone', created_at: '2026-10-03T12:00:00Z', updated_at: '2026-10-12T15:27:00Z' },
 ];
 
 export const demoCategories: ReportCategory[] = [
@@ -89,26 +94,259 @@ const seedReport: Report = {
   category: demoCategories[1], reporter: demoProfiles[0], location: demoLocation,
 };
 
+const seedAuditLogs: AuditLog[] = [
+  {
+    id: 'audit-demo-1',
+    actor_id: 'demo-admin',
+    action: 'Changed user role',
+    entity_type: 'profile',
+    entity_id: 'user-rohit',
+    result: 'success',
+    ip_address: '192.168.1.24',
+    created_at: '2026-10-13T18:24:00Z',
+    details: {
+      target_name: 'Rohit Sharma',
+      target_role: 'Volunteer',
+      from: 'Citizen',
+      to: 'Volunteer',
+      summary: 'Role changed from Citizen to Volunteer',
+      changes: {
+        role: { old: 'citizen', new: 'volunteer' }
+      }
+    }
+  },
+  {
+    id: 'audit-demo-2',
+    actor_id: 'demo-admin',
+    action: 'Approved volunteer application',
+    entity_type: 'volunteer',
+    entity_id: 'user-priya',
+    result: 'success',
+    ip_address: '192.168.1.24',
+    created_at: '2026-10-13T17:10:00Z',
+    details: {
+      target_name: 'Priya Desai',
+      target_role: 'Volunteer',
+      summary: 'Volunteer application approved',
+      changes: {
+        verification_status: { old: 'pending', new: 'verified' },
+        is_verified: { old: false, new: true }
+      }
+    }
+  },
+  {
+    id: 'audit-demo-3',
+    actor_id: 'demo-supervisor',
+    action: 'Updated report status',
+    entity_type: 'report',
+    entity_id: 'RPT-1023',
+    result: 'success',
+    ip_address: '192.168.1.35',
+    created_at: '2026-10-13T16:02:00Z',
+    details: {
+      target_name: 'Report #1023',
+      from: 'Open',
+      to: 'In Progress',
+      summary: 'Status changed from Open to In Progress',
+      changes: {
+        status: { old: 'open', new: 'in_progress' }
+      }
+    }
+  },
+  {
+    id: 'audit-demo-4',
+    actor_id: 'demo-volunteer',
+    action: 'Mark task as complete',
+    entity_type: 'task',
+    entity_id: 'TSK-456',
+    result: 'success',
+    ip_address: '192.168.1.42',
+    created_at: '2026-10-13T14:18:00Z',
+    details: {
+      target_name: 'Task #456',
+      summary: 'Task marked as completed with evidence',
+      changes: {
+        status: { old: 'in_progress', new: 'completed' }
+      }
+    }
+  },
+  {
+    id: 'audit-demo-5',
+    actor_id: 'demo-admin',
+    action: 'Updated system settings',
+    entity_type: 'settings',
+    entity_id: 'setting-notifications',
+    result: 'success',
+    ip_address: '192.168.1.24',
+    created_at: '2026-10-13T13:45:00Z',
+    details: {
+      target_name: 'Notification Settings',
+      summary: 'Email notifications enabled for new reports',
+      changes: {
+        email_notifications_enabled: { old: false, new: true }
+      }
+    }
+  },
+  {
+    id: 'audit-demo-6',
+    actor_id: 'demo-supervisor',
+    action: 'Deactivated user',
+    entity_type: 'profile',
+    entity_id: 'user-amit',
+    result: 'failed',
+    ip_address: '192.168.1.35',
+    created_at: '2026-10-13T11:32:00Z',
+    details: {
+      target_name: 'Amit Verma',
+      target_role: 'User',
+      reason: 'Account deactivated due to policy violation',
+      summary: 'Account deactivated due to policy violation',
+      error: 'Permission denied: supervisor cannot deactivate citizens directly'
+    }
+  },
+  {
+    id: 'audit-demo-7',
+    actor_id: 'demo-admin',
+    action: 'Edited report details',
+    entity_type: 'report',
+    entity_id: 'RPT-987',
+    result: 'success',
+    ip_address: '192.168.1.24',
+    created_at: '2026-10-13T10:15:00Z',
+    details: {
+      target_name: 'Report #987',
+      summary: 'Updated location and description',
+      changes: {
+        location: { old: 'Ward 4 entrance', new: 'Main Street near Community Center' },
+        description: { old: 'Large pothole', new: 'Deep pothole causing vehicular damage' }
+      }
+    }
+  },
+  {
+    id: 'audit-demo-8',
+    actor_id: 'demo-volunteer',
+    action: 'Uploaded evidence',
+    entity_type: 'task',
+    entity_id: 'TSK-432',
+    result: 'success',
+    ip_address: '192.168.1.42',
+    created_at: '2026-10-12T18:50:00Z',
+    details: {
+      target_name: 'Task #432',
+      summary: 'Added after image for pothole repair',
+      evidence_type: 'after',
+      file_name: 'pothole_fixed_01.jpg'
+    }
+  },
+  {
+    id: 'audit-demo-9',
+    actor_id: 'demo-admin',
+    action: 'Rejected volunteer application',
+    entity_type: 'profile',
+    entity_id: 'user-neha',
+    result: 'success',
+    ip_address: '192.168.1.24',
+    created_at: '2026-10-12T17:14:00Z',
+    details: {
+      target_name: 'Neha Kapoor',
+      target_role: 'User',
+      summary: 'Application rejected (Insufficient details)',
+      reason: 'Insufficient verification documents provided'
+    }
+  },
+  {
+    id: 'audit-demo-10',
+    actor_id: 'demo-supervisor',
+    action: 'Assigned task',
+    entity_type: 'task',
+    entity_id: 'TSK-431',
+    result: 'success',
+    ip_address: '192.168.1.35',
+    created_at: '2026-10-12T15:27:00Z',
+    details: {
+      target_name: 'Task #431',
+      summary: 'Task assigned to Rahul Mehta',
+      assigned_to: 'Rahul Mehta',
+      assigned_to_id: 'user-rahul'
+    }
+  }
+];
+
 type DemoStore = {
+  profiles: Profile[];
   reports: Report[];
   tasks: Task[];
   volunteers: Volunteer[];
   taskRequests: VolunteerTaskRequest[];
   verificationRecords: VerificationRecord[];
+  auditLogs: AuditLog[];
 };
 
 function initialStore(): DemoStore {
+  const profiles = demoProfiles.map((p) => ({ ...p }));
+  const profileMap = new Map(profiles.map((p) => [p.id, p]));
+
+  const auditLogs = seedAuditLogs.map((log) => ({
+    ...log,
+    actor: log.actor_id ? profileMap.get(log.actor_id) : undefined,
+    target: log.entity_id && (log.entity_type === 'profile' || log.entity_type === 'user' || log.entity_type === 'volunteer')
+      ? profileMap.get(log.entity_id)
+      : undefined,
+  }));
+
   return {
+    profiles,
     reports: [seedReport],
     tasks: [],
     taskRequests: [],
     verificationRecords: [],
-    volunteers: [{
-      id: 'demo-volunteer-record', user_id: 'demo-volunteer', bio: 'Ready to help improve Demo City.', service_area: 'Central Ward',
-      current_workload: 0, max_workload: 5, completed_tasks: 0, rating: 4.9, total_ratings: 12,
-      is_verified: true, verification_status: 'verified', latitude: 17.385, longitude: 78.4867,
-      created_at: now, updated_at: now, profile: demoProfiles[2], skills: [], availability: [],
-    }],
+    auditLogs,
+    volunteers: [
+      {
+        id: 'demo-volunteer-record', user_id: 'demo-volunteer', bio: 'Ready to help improve Demo City.', service_area: 'Central Ward',
+        current_workload: 0, max_workload: 5, completed_tasks: 0, rating: 4.9, total_ratings: 12,
+        is_verified: true, verification_status: 'verified', latitude: 17.385, longitude: 78.4867,
+        created_at: now, updated_at: now, profile: { ...profiles[2] },
+        skills: [
+          { id: 'sk-1', volunteer_id: 'demo-volunteer-record', skill: 'Debris Removal', proficiency: 'expert', created_at: now },
+          { id: 'sk-2', volunteer_id: 'demo-volunteer-record', skill: 'First Aid', proficiency: 'intermediate', created_at: now },
+        ],
+        availability: [],
+      },
+      {
+        id: 'vol-rohit', user_id: 'user-rohit', bio: 'Community volunteer helping with neighborhood cleanup and road safety.', service_area: 'Central Ward',
+        current_workload: 1, max_workload: 4, completed_tasks: 8, rating: 4.8, total_ratings: 9,
+        is_verified: true, verification_status: 'verified', latitude: 17.386, longitude: 78.487,
+        created_at: now, updated_at: now, profile: { ...profiles.find((p) => p.id === 'user-rohit')! },
+        skills: [
+          { id: 'sk-3', volunteer_id: 'vol-rohit', skill: 'Traffic Control', proficiency: 'intermediate', created_at: now },
+          { id: 'sk-4', volunteer_id: 'vol-rohit', skill: 'Heavy Lifting', proficiency: 'expert', created_at: now },
+        ],
+        availability: [],
+      },
+      {
+        id: 'vol-priya', user_id: 'user-priya', bio: 'Dedicated volunteer focusing on education drives and emergency aid distribution.', service_area: 'North District',
+        current_workload: 2, max_workload: 5, completed_tasks: 14, rating: 5.0, total_ratings: 15,
+        is_verified: true, verification_status: 'verified', latitude: 17.395, longitude: 78.490,
+        created_at: now, updated_at: now, profile: { ...profiles.find((p) => p.id === 'user-priya')! },
+        skills: [
+          { id: 'sk-5', volunteer_id: 'vol-priya', skill: 'First Aid', proficiency: 'expert', created_at: now },
+          { id: 'sk-6', volunteer_id: 'vol-priya', skill: 'Food Distribution', proficiency: 'intermediate', created_at: now },
+        ],
+        availability: [],
+      },
+      {
+        id: 'vol-rahul', user_id: 'user-rahul', bio: 'Experienced civil repair and streetlight fixing volunteer.', service_area: 'West Zone',
+        current_workload: 1, max_workload: 6, completed_tasks: 22, rating: 4.9, total_ratings: 18,
+        is_verified: true, verification_status: 'verified', latitude: 17.378, longitude: 78.475,
+        created_at: now, updated_at: now, profile: { ...profiles.find((p) => p.id === 'user-rahul')! },
+        skills: [
+          { id: 'sk-7', volunteer_id: 'vol-rahul', skill: 'Electrical Repairs', proficiency: 'expert', created_at: now },
+          { id: 'sk-8', volunteer_id: 'vol-rahul', skill: 'Pothole Filling', proficiency: 'intermediate', created_at: now },
+        ],
+        availability: [],
+      },
+    ],
   };
 }
 
@@ -117,9 +355,13 @@ function readStore(): DemoStore {
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) return initialStore();
     const store = JSON.parse(stored) as Partial<DemoStore>;
+    const base = initialStore();
     return {
-      ...initialStore(),
+      ...base,
       ...store,
+      profiles: store.profiles && store.profiles.length > 0 ? store.profiles : base.profiles,
+      volunteers: store.volunteers && store.volunteers.length > 0 ? store.volunteers : base.volunteers,
+      auditLogs: store.auditLogs && store.auditLogs.length > 0 ? store.auditLogs : base.auditLogs,
       taskRequests: store.taskRequests || [],
       verificationRecords: store.verificationRecords || [],
     };
@@ -145,15 +387,109 @@ function syncDemoVolunteerWorkload(store: DemoStore, volunteerId: string): void 
 }
 
 export function demoProfile(id: string): Profile {
-  return demoProfiles.find((profile) => profile.id === id) || demoProfiles[0];
+  const store = readStore();
+  return store.profiles.find((profile) => profile.id === id) || demoProfiles.find((profile) => profile.id === id) || demoProfiles[0];
 }
 
 export function demoAllProfiles(): Profile[] {
-  return demoProfiles;
+  return readStore().profiles;
 }
 
 export function demoRoleProfile(role: 'citizen' | 'supervisor' | 'volunteer' | 'analyst' | 'admin'): Profile {
-  return demoProfiles.find((profile) => profile.role === role) || demoProfiles[0];
+  const store = readStore();
+  return store.profiles.find((profile) => profile.role === role) || demoProfiles.find((profile) => profile.role === role) || demoProfiles[0];
+}
+
+export function demoUpdateProfile(id: string, updates: Partial<Profile>): Profile {
+  const store = readStore();
+  let found = store.profiles.find((p) => p.id === id);
+  const oldProfile = found ? { ...found } : null;
+
+  if (!found) {
+    const base = demoProfiles.find((p) => p.id === id) || {
+      id,
+      email: `${id}@civicsync.local`,
+      full_name: 'Civic User',
+      phone: null,
+      role: 'citizen' as const,
+      avatar_url: null,
+      is_active: true,
+      city: 'Demo City',
+      area: 'Central Ward',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    found = { ...base, ...updates, updated_at: new Date().toISOString() };
+    store.profiles.push(found);
+  } else {
+    Object.assign(found, updates, { updated_at: new Date().toISOString() });
+  }
+
+  // If this user is a volunteer, update the volunteer record's profile & service area
+  const volunteer = store.volunteers.find((v) => v.user_id === id);
+  if (volunteer) {
+    volunteer.profile = { ...found };
+    if (updates.area) {
+      volunteer.service_area = updates.area;
+    }
+    volunteer.updated_at = new Date().toISOString();
+  }
+
+  // Also sync reporter on demo reports
+  store.reports.forEach((report) => {
+    if (report.reporter_id === id) {
+      report.reporter = { ...found! };
+    }
+  });
+
+  // Calculate changed fields
+  const changes: Record<string, { old: unknown; new: unknown }> = {};
+  if (oldProfile) {
+    (['full_name', 'phone', 'city', 'area', 'role', 'is_active', 'notification_preferences'] as const).forEach((key) => {
+      if (key in updates && JSON.stringify(updates[key]) !== JSON.stringify(oldProfile[key])) {
+        changes[key] = { old: oldProfile[key], new: updates[key] };
+      }
+    });
+  }
+
+  if (Object.keys(changes).length > 0 || !oldProfile) {
+    let action = 'update_profile';
+    let summary = `Updated profile information for ${found.full_name}`;
+    if (updates.role && oldProfile && updates.role !== oldProfile.role) {
+      action = 'change_user_role';
+      summary = `Role changed from ${oldProfile.role} to ${updates.role}`;
+    } else if (updates.is_active !== undefined && oldProfile && updates.is_active !== oldProfile.is_active) {
+      action = updates.is_active ? 'activate_user' : 'deactivate_user';
+      summary = updates.is_active ? `User account activated` : `User account deactivated`;
+    }
+
+    const currentRole = typeof window !== 'undefined' ? sessionStorage.getItem('civicsync-demo-role') : null;
+    const actor = store.profiles.find((p) => p.role === (currentRole || 'admin')) || store.profiles[0];
+
+    const auditLog: AuditLog = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      actor_id: actor.id,
+      action,
+      entity_type: 'profile',
+      entity_id: found.id,
+      result: 'success',
+      ip_address: '192.168.1.24',
+      created_at: new Date().toISOString(),
+      actor,
+      target: { ...found },
+      details: {
+        target_name: found.full_name,
+        target_email: found.email,
+        target_role: found.role,
+        summary,
+        changes: Object.keys(changes).length > 0 ? changes : undefined,
+      },
+    };
+    store.auditLogs.unshift(auditLog);
+  }
+
+  writeStore(store);
+  return found;
 }
 
 export function demoReports(filters?: { status?: string; category_id?: string; priority_level?: string }): Report[] {
@@ -223,9 +559,121 @@ export function demoUpdateReportPriority(reportId: string, priorityLevel: string
 
 export function demoVolunteers(): Volunteer[] {
   const store = readStore();
-  store.volunteers.forEach((volunteer) => syncDemoVolunteerWorkload(store, volunteer.user_id));
+  store.volunteers.forEach((volunteer) => {
+    syncDemoVolunteerWorkload(store, volunteer.user_id);
+    const p = store.profiles.find((prof) => prof.id === volunteer.user_id);
+    if (p) {
+      volunteer.profile = { ...p };
+      if (!volunteer.service_area && p.area) {
+        volunteer.service_area = p.area;
+      }
+    }
+  });
   writeStore(store);
   return store.volunteers;
+}
+
+export function demoUpdateVolunteer(idOrUserId: string, updates: Partial<Volunteer>): Volunteer | null {
+  const store = readStore();
+  const volunteer = store.volunteers.find((v) => v.id === idOrUserId || v.user_id === idOrUserId);
+  if (!volunteer) return null;
+  const oldVolunteer = { ...volunteer };
+  Object.assign(volunteer, updates, { updated_at: new Date().toISOString() });
+
+  const changes: Record<string, { old: unknown; new: unknown }> = {};
+  (['bio', 'service_area', 'max_workload', 'verification_status', 'is_verified'] as const).forEach((key) => {
+    if (key in updates && JSON.stringify(updates[key]) !== JSON.stringify(oldVolunteer[key])) {
+      changes[key] = { old: oldVolunteer[key], new: updates[key] };
+    }
+  });
+
+  if (Object.keys(changes).length > 0) {
+    const currentRole = typeof window !== 'undefined' ? sessionStorage.getItem('civicsync-demo-role') : null;
+    const actor = store.profiles.find((p) => p.role === (currentRole || 'admin')) || store.profiles[0];
+    const targetProfile = store.profiles.find((p) => p.id === volunteer.user_id);
+    const auditLog: AuditLog = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      actor_id: actor.id,
+      action: 'update_volunteer_profile',
+      entity_type: 'volunteer',
+      entity_id: volunteer.id,
+      result: 'success',
+      ip_address: '192.168.1.24',
+      created_at: new Date().toISOString(),
+      actor,
+      target: targetProfile,
+      details: {
+        target_name: targetProfile?.full_name || 'Volunteer',
+        target_email: targetProfile?.email,
+        target_role: 'volunteer',
+        summary: `Updated volunteer profile details`,
+        changes,
+      },
+    };
+    store.auditLogs.unshift(auditLog);
+  }
+
+  writeStore(store);
+  return volunteer;
+}
+
+export function demoCreateVolunteer(input: {
+  user_id: string;
+  bio?: string;
+  service_area?: string;
+  latitude?: number;
+  longitude?: number;
+}): Volunteer {
+  const store = readStore();
+  const profile = store.profiles.find((p) => p.id === input.user_id) || demoProfile(input.user_id);
+  const volunteer: Volunteer = {
+    id: `demo-volunteer-${Date.now()}`,
+    user_id: input.user_id,
+    bio: input.bio || null,
+    service_area: input.service_area || null,
+    current_workload: 0,
+    max_workload: 5,
+    completed_tasks: 0,
+    rating: 5.0,
+    total_ratings: 0,
+    is_verified: true,
+    verification_status: 'verified',
+    latitude: input.latitude || 17.385,
+    longitude: input.longitude || 78.4867,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    profile,
+    skills: [],
+    availability: [],
+  };
+  store.volunteers.push(volunteer);
+  writeStore(store);
+  return volunteer;
+}
+
+export function demoAddVolunteerSkill(volunteerId: string, skill: string, proficiency: string): void {
+  const store = readStore();
+  const volunteer = store.volunteers.find((v) => v.id === volunteerId || v.user_id === volunteerId);
+  if (!volunteer) return;
+  const newSkill = {
+    id: `skill-${Date.now()}`,
+    volunteer_id: volunteer.id,
+    skill,
+    proficiency: proficiency as import('@/types').Proficiency,
+    created_at: new Date().toISOString(),
+  };
+  volunteer.skills = [...(volunteer.skills || []), newSkill];
+  writeStore(store);
+}
+
+export function demoRemoveVolunteerSkill(skillId: string): void {
+  const store = readStore();
+  store.volunteers.forEach((v) => {
+    if (v.skills) {
+      v.skills = v.skills.filter((s) => s.id !== skillId);
+    }
+  });
+  writeStore(store);
 }
 
 export function demoTasks(): Task[] { return readStore().tasks.map(enrichTask); }
@@ -510,6 +958,126 @@ export function demoCreateVerificationRecord(input: {
 
 export function demoVerificationRecords(taskId: string): VerificationRecord[] {
   return readStore().verificationRecords.filter((record) => record.task_id === taskId);
+}
+
+export function demoInviteUser(input: {
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+}): Profile {
+  const store = readStore();
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const existing = store.profiles.find((p) => p.email.toLowerCase() === normalizedEmail);
+  if (existing) {
+    throw new Error(`A user with email "${input.email}" already exists.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const newProfileId = `demo-user-${Date.now()}`;
+  const newProfile: Profile = {
+    id: newProfileId,
+    email: normalizedEmail,
+    full_name: input.fullName.trim(),
+    phone: input.phone?.trim() || null,
+    role: input.role,
+    avatar_url: null,
+    is_active: true,
+    city: 'Demo City',
+    area: 'Central Ward',
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+  store.profiles.unshift(newProfile);
+
+  if (input.role === 'volunteer') {
+    store.volunteers.unshift({
+      id: `vol-${newProfileId}`,
+      user_id: newProfileId,
+      bio: `Volunteer account created for ${newProfile.full_name}.`,
+      service_area: 'Central Ward',
+      current_workload: 0,
+      max_workload: 5,
+      completed_tasks: 0,
+      rating: 5.0,
+      total_ratings: 0,
+      is_verified: true,
+      verification_status: 'verified',
+      latitude: 17.385,
+      longitude: 78.4867,
+      created_at: nowIso,
+      updated_at: nowIso,
+      profile: { ...newProfile },
+      skills: [],
+      availability: [],
+    });
+  }
+
+  const currentRole = typeof window !== 'undefined' ? sessionStorage.getItem('civicsync-demo-role') : null;
+  const actor = store.profiles.find((p) => p.role === (currentRole || 'admin')) || store.profiles[0];
+  const auditEntry: AuditLog = {
+    id: `audit-${Date.now()}`,
+    actor_id: actor.id,
+    action: 'invite_user',
+    entity_type: 'profile',
+    entity_id: newProfileId,
+    result: 'success',
+    ip_address: '192.168.1.24',
+    created_at: nowIso,
+    actor,
+    target: newProfile,
+    details: {
+      invited_role: input.role,
+      target_name: newProfile.full_name,
+      target_email: newProfile.email,
+      target_role: newProfile.role,
+      summary: `Invited new ${input.role} account`,
+    },
+  };
+  store.auditLogs.unshift(auditEntry);
+  writeStore(store);
+  return newProfile;
+}
+
+export function demoAuditLogs(limit = 100): AuditLog[] {
+  const store = readStore();
+  return store.auditLogs.slice(0, limit);
+}
+
+export function demoCreateAuditLog(input: {
+  action: string;
+  entity_type: string;
+  entity_id?: string;
+  details?: Record<string, unknown>;
+  actor_id?: string;
+  user_id?: string;
+  result?: string;
+  ip_address?: string;
+}): AuditLog {
+  const store = readStore();
+  const actorId = input.actor_id || input.user_id || 'demo-admin';
+  const actor = store.profiles.find((p) => p.id === actorId);
+  let targetProfile: Profile | undefined = undefined;
+  if (input.entity_id && (input.entity_type === 'profile' || input.entity_type === 'user')) {
+    targetProfile = store.profiles.find((p) => p.id === input.entity_id);
+  }
+
+  const log: AuditLog = {
+    id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    actor_id: actorId,
+    action: input.action,
+    entity_type: input.entity_type,
+    entity_id: input.entity_id || null,
+    details: input.details || null,
+    result: input.result || 'success',
+    ip_address: input.ip_address || '192.168.1.24',
+    created_at: new Date().toISOString(),
+    actor,
+    target: targetProfile,
+  };
+  store.auditLogs.unshift(log);
+  writeStore(store);
+  return log;
 }
 
 export function demoReset(): void { sessionStorage.removeItem(STORAGE_KEY); }

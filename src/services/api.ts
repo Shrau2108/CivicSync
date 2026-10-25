@@ -1,12 +1,50 @@
-import { supabase, STORAGE_BUCKET, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase, STORAGE_BUCKET } from '@/lib/supabase';
+
 import type {
   Report, ReportCategory, ReportMedia, Task, TaskAssignment,
   Volunteer, Notification, Feedback, AuditLog, DuplicateCandidate,
   VerificationRecord, Evidence, PriorityScore, SystemSetting, VolunteerTaskRequest, Profile,
 } from '@/types';
+
 import { computeFileHash } from '@/lib/duplicateDetection';
 import { matchVolunteersToTask } from '@/lib/volunteerMatching';
-import { isDemoMode, demoCategories, demoReports, demoReportsByReporter, demoReportById, demoCreateReport, demoCreateLocation, demoUpdateReportStatus, demoUpdateReportPriority, demoVolunteers, demoTasks, demoTasksForVolunteer, demoTaskById, demoCreateTask, demoAssignTask, demoUpdateTaskStatus, demoAcceptTask, demoDeclineTask, demoVolunteerTaskRequests, demoSubmitVolunteerTaskRequest, demoReviewVolunteerTaskRequest, demoUploadEvidence, demoCreateVerificationRecord, demoVerificationRecords, demoHydrateTaskMedia, demoAllProfiles } from '@/lib/demoMode';
+
+import {
+  isDemoMode,
+  demoCategories,
+  demoReports,
+  demoReportsByReporter,
+  demoReportById,
+  demoCreateReport,
+  demoCreateLocation,
+  demoUpdateReportStatus,
+  demoUpdateReportPriority,
+  demoVolunteers,
+  demoTasks,
+  demoTasksForVolunteer,
+  demoTaskById,
+  demoCreateTask,
+  demoAssignTask,
+  demoUpdateTaskStatus,
+  demoAcceptTask,
+  demoDeclineTask,
+  demoVolunteerTaskRequests,
+  demoSubmitVolunteerTaskRequest,
+  demoReviewVolunteerTaskRequest,
+  demoUploadEvidence,
+  demoCreateVerificationRecord,
+  demoVerificationRecords,
+  demoHydrateTaskMedia,
+  demoAllProfiles,
+  demoUpdateProfile,
+  demoUpdateVolunteer,
+  demoCreateVolunteer,
+  demoAddVolunteerSkill,
+  demoRemoveVolunteerSkill,
+  demoInviteUser,
+  demoAuditLogs,
+  demoCreateAuditLog,
+} from '@/lib/demoMode';
 
 // ============================================================
 // CATEGORIES
@@ -413,6 +451,7 @@ export async function createVolunteer(input: {
   latitude?: number;
   longitude?: number;
 }): Promise<Volunteer> {
+  if (isDemoMode()) return demoCreateVolunteer(input);
   const { data, error } = await supabase
     .from('volunteers')
     .insert(input)
@@ -423,11 +462,19 @@ export async function createVolunteer(input: {
 }
 
 export async function updateVolunteer(id: string, updates: Partial<Volunteer>): Promise<void> {
+  if (isDemoMode()) {
+    demoUpdateVolunteer(id, updates);
+    return;
+  }
   const { error } = await supabase.from('volunteers').update(updates).eq('id', id);
   if (error) throw error;
 }
 
 export async function addVolunteerSkill(volunteerId: string, skill: string, proficiency: string): Promise<void> {
+  if (isDemoMode()) {
+    demoAddVolunteerSkill(volunteerId, skill, proficiency);
+    return;
+  }
   const { error } = await supabase
     .from('volunteer_skills')
     .insert({ volunteer_id: volunteerId, skill, proficiency });
@@ -435,6 +482,10 @@ export async function addVolunteerSkill(volunteerId: string, skill: string, prof
 }
 
 export async function removeVolunteerSkill(skillId: string): Promise<void> {
+  if (isDemoMode()) {
+    demoRemoveVolunteerSkill(skillId);
+    return;
+  }
   const { error } = await supabase.from('volunteer_skills').delete().eq('id', skillId);
   if (error) throw error;
 }
@@ -920,29 +971,130 @@ export async function fetchFeedbackForReport(reportId: string): Promise<Feedback
 // ============================================================
 // AUDIT LOGS
 // ============================================================
-export async function fetchAuditLogs(limit = 50): Promise<AuditLog[]> {
-  if (isDemoMode()) return [];
+export async function hydrateAuditLogs(logs: AuditLog[]): Promise<AuditLog[]> {
+  if (!logs || logs.length === 0) return [];
+
+  // 1. Gather all profile IDs needing hydration (actors + direct target entities)
+  const profileIdSet = new Set<string>();
+  const volunteerIdSet = new Set<string>();
+
+  logs.forEach((log) => {
+    if (log.actor_id) profileIdSet.add(log.actor_id);
+
+    if (log.entity_type === 'profile' || log.entity_type === 'user') {
+      if (log.entity_id) profileIdSet.add(log.entity_id);
+    } else if (log.entity_type === 'volunteer') {
+      if (log.entity_id) volunteerIdSet.add(log.entity_id);
+    }
+  });
+
+  // 2. Hydrate volunteer user_ids if any volunteer entities were referenced
+  const volunteerUserIdMap: Record<string, string> = {};
+  if (volunteerIdSet.size > 0 && !isDemoMode()) {
+    try {
+      const { data: vList } = await supabase
+        .from('volunteers')
+        .select('id, user_id')
+        .in('id', Array.from(volunteerIdSet));
+      (vList || []).forEach((v) => {
+        if (v.user_id) {
+          volunteerUserIdMap[v.id] = v.user_id;
+          profileIdSet.add(v.user_id);
+        }
+      });
+    } catch (vErr) {
+      console.warn('Could not hydrate volunteer entities:', vErr);
+    }
+  }
+
+  // 3. Hydrate all profiles in bulk
+  let profileMap: Record<string, Profile> = {};
+  if (profileIdSet.size > 0) {
+    try {
+      profileMap = await hydrateProfiles(Array.from(profileIdSet));
+    } catch (pErr) {
+      console.warn('Could not hydrate profiles for audit logs:', pErr);
+    }
+  }
+
+  // 4. Attach actor, target, result, and clean details to each log
+  return logs.map((log) => {
+    const enriched = { ...log };
+
+    // Actor
+    if (enriched.actor_id && profileMap[enriched.actor_id]) {
+      enriched.actor = profileMap[enriched.actor_id];
+    }
+
+    // Target
+    const details = enriched.details || {};
+    if (enriched.entity_type === 'profile' || enriched.entity_type === 'user') {
+      if (enriched.entity_id && profileMap[enriched.entity_id]) {
+        enriched.target = profileMap[enriched.entity_id];
+      } else if (details.target_name || details.target_email) {
+        enriched.target = {
+          id: enriched.entity_id || '',
+          full_name: (details.target_name as string) || (details.name as string) || 'User',
+          email: (details.target_email as string) || (details.email as string) || '',
+          role: (details.target_role as import('@/types').UserRole) || (details.role as import('@/types').UserRole) || 'citizen',
+          phone: null,
+          avatar_url: null,
+          is_active: true,
+          created_at: enriched.created_at,
+          updated_at: enriched.created_at,
+        };
+      }
+    } else if (enriched.entity_type === 'volunteer') {
+      const targetUserId = enriched.entity_id ? volunteerUserIdMap[enriched.entity_id] : null;
+      if (targetUserId && profileMap[targetUserId]) {
+        enriched.target = profileMap[targetUserId];
+      } else if (details.target_name || details.target_email) {
+        enriched.target = {
+          id: enriched.entity_id || '',
+          full_name: (details.target_name as string) || 'Volunteer',
+          email: (details.target_email as string) || '',
+          role: 'volunteer',
+          phone: null,
+          avatar_url: null,
+          is_active: true,
+          created_at: enriched.created_at,
+          updated_at: enriched.created_at,
+        };
+      }
+    }
+
+    // Normalize result
+    if (!enriched.result) {
+      if (typeof details.result === 'string') {
+        enriched.result = details.result as 'success' | 'failed';
+      } else {
+        enriched.result = 'success';
+      }
+    }
+
+    // Normalize IP address
+    if (!enriched.ip_address && typeof details.ip_address === 'string') {
+      enriched.ip_address = details.ip_address;
+    }
+
+    return enriched;
+  });
+}
+
+export async function fetchAuditLogs(limit = 100): Promise<AuditLog[]> {
+  if (isDemoMode()) return demoAuditLogs(limit);
   const { data, error } = await supabase
     .from('audit_logs')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
-  const logs = (data || []) as unknown as AuditLog[];
-  const actorIds = logs.map((log) => log.actor_id).filter((id): id is string => Boolean(id));
-  if (actorIds.length > 0) {
-    const profileMap = await hydrateProfiles(actorIds);
-    logs.forEach((log) => {
-      if (log.actor_id && profileMap[log.actor_id]) {
-        log.actor = profileMap[log.actor_id];
-      }
-    });
-  }
-  return logs;
+  const rawLogs = (data || []) as unknown as AuditLog[];
+  return await hydrateAuditLogs(rawLogs);
 }
 
 export async function fetchAllAuditLogs(): Promise<AuditLog[]> {
-  if (isDemoMode()) return [];
+  if (isDemoMode()) return demoAuditLogs(1000);
   const pageSize = 1000;
   const logs: AuditLog[] = [];
   for (let offset = 0; ; offset += pageSize) {
@@ -956,16 +1108,7 @@ export async function fetchAllAuditLogs(): Promise<AuditLog[]> {
     logs.push(...page);
     if (page.length < pageSize) break;
   }
-  const actorIds = logs.map((log) => log.actor_id).filter((id): id is string => Boolean(id));
-  if (actorIds.length > 0) {
-    const profileMap = await hydrateProfiles(actorIds);
-    logs.forEach((log) => {
-      if (log.actor_id && profileMap[log.actor_id]) {
-        log.actor = profileMap[log.actor_id];
-      }
-    });
-  }
-  return logs;
+  return await hydrateAuditLogs(logs);
 }
 
 export async function createAuditLog(input: {
@@ -975,8 +1118,13 @@ export async function createAuditLog(input: {
   details?: Record<string, unknown>;
   actor_id?: string;
   user_id?: string;
+  result?: string;
+  ip_address?: string;
 }): Promise<void> {
-  if (isDemoMode()) return;
+  if (isDemoMode()) {
+    demoCreateAuditLog(input);
+    return;
+  }
   try {
     const currentUser = (await supabase.auth.getUser()).data.user;
     const actorId = input.actor_id || input.user_id || currentUser?.id;
@@ -986,6 +1134,8 @@ export async function createAuditLog(input: {
       entity_id: input.entity_id,
       details: input.details,
       actor_id: actorId,
+      result: input.result || 'success',
+      ip_address: input.ip_address || null,
     });
     if (error) {
       console.warn('Could not insert audit log (non-fatal):', error.message);
@@ -1065,14 +1215,162 @@ export async function fetchAllProfiles(): Promise<import('@/types').Profile[]> {
 }
 
 export async function updateProfile(id: string, updates: Partial<import('@/types').Profile>): Promise<void> {
-  if (isDemoMode()) return;
+  if (isDemoMode()) {
+    demoUpdateProfile(id, updates);
+    return;
+  }
   const { error } = await supabase.from('profiles').update(updates).eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (
+      error.message?.includes('city') ||
+      error.message?.includes('area') ||
+      error.message?.includes('notification_preferences') ||
+      error.code === 'PGRST204'
+    ) {
+      const baseUpdates: Record<string, unknown> = {};
+      if (updates.full_name !== undefined) baseUpdates.full_name = updates.full_name;
+      if (updates.phone !== undefined) baseUpdates.phone = updates.phone;
+      if (updates.avatar_url !== undefined) baseUpdates.avatar_url = updates.avatar_url;
+      if (updates.role !== undefined) baseUpdates.role = updates.role;
+      if (updates.is_active !== undefined) baseUpdates.is_active = updates.is_active;
+
+      const { error: baseError } = await supabase.from('profiles').update(baseUpdates).eq('id', id);
+      if (baseError) throw baseError;
+
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            full_name: updates.full_name,
+            phone: updates.phone,
+            city: updates.city,
+            area: updates.area,
+            notification_preferences: updates.notification_preferences,
+          },
+        });
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    throw error;
+  }
+
+  // Only sync to auth.updateUser if the user is updating their own profile
+  try {
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    if (currentUser?.id === id) {
+      await supabase.auth.updateUser({
+        data: {
+          full_name: updates.full_name,
+          phone: updates.phone,
+          city: updates.city,
+          area: updates.area,
+          notification_preferences: updates.notification_preferences,
+        },
+      });
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export async function updateUserActiveStatus(userId: string, isActive: boolean): Promise<void> {
+  await updateProfile(userId, { is_active: isActive });
+}
+
+export async function revokeVolunteerAccess(
+  userId: string,
+  volunteerId?: string,
+  reason?: string
+): Promise<void> {
+  // 1. Demote user's profile role from 'volunteer' to 'citizen'
+  await updateProfile(userId, { role: 'citizen' });
+
+  // 2. Set volunteer verification to rejected / unverified so tasks cannot be assigned
+  let targetVolId = volunteerId;
+  if (!targetVolId) {
+    const vol = await fetchVolunteerByUserId(userId);
+    targetVolId = vol?.id;
+  }
+
+  if (targetVolId) {
+    await updateVolunteer(targetVolId, {
+      is_verified: false,
+      verification_status: 'rejected',
+    });
+  }
+
+  // 3. Create explicit audit record for revocation
+  await createAuditLog({
+    action: 'revoke_volunteer_access',
+    entity_type: 'volunteer',
+    entity_id: targetVolId || userId,
+    details: {
+      user_id: userId,
+      previous_role: 'volunteer',
+      new_role: 'citizen',
+      reason: reason || 'Volunteer access revoked by administrator',
+      summary: 'Volunteer access revoked; account demoted to Citizen',
+    },
+  });
+}
+
+export async function grantVolunteerAccess(
+  userId: string,
+  volunteerId?: string
+): Promise<void> {
+  // 1. Promote user's profile role to 'volunteer'
+  await updateProfile(userId, { role: 'volunteer' });
+
+  // 2. Ensure volunteer verification status is verified
+  let targetVolId = volunteerId;
+  if (!targetVolId) {
+    const vol = await fetchVolunteerByUserId(userId);
+    targetVolId = vol?.id;
+  }
+
+  if (targetVolId) {
+    await updateVolunteer(targetVolId, {
+      is_verified: true,
+      verification_status: 'verified',
+    });
+  } else {
+    // If no volunteer record exists, create one
+    await createVolunteer({
+      user_id: userId,
+    });
+  }
+
+  // 3. Create explicit audit record for grant
+  await createAuditLog({
+    action: 'grant_volunteer_access',
+    entity_type: 'volunteer',
+    entity_id: targetVolId || userId,
+    details: {
+      user_id: userId,
+      new_role: 'volunteer',
+      summary: 'Volunteer access granted by administrator',
+    },
+  });
+}
+
+export async function revokeAnalystAccess(userId: string): Promise<void> {
+  await updateProfile(userId, { role: 'citizen' });
+  await createAuditLog({
+    action: 'revoke_analyst_access',
+    entity_type: 'profile',
+    entity_id: userId,
+    details: {
+      user_id: userId,
+      previous_role: 'analyst',
+      new_role: 'citizen',
+      summary: 'Analyst access revoked; account demoted to Citizen',
+    },
+  });
 }
 
 export function adminInvitesAvailable(): boolean {
-  const hasDemoSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('civicsync-demo-role'));
-  return isSupabaseConfigured && !hasDemoSession;
+  return true;
 }
 
 export async function inviteAdminUser(input: {
@@ -1081,20 +1379,31 @@ export async function inviteAdminUser(input: {
   phone?: string;
   role: import('@/types').UserRole;
 }): Promise<import('@/types').Profile> {
-  if (!adminInvitesAvailable()) {
-    throw new Error('Email invitations are unavailable in demo mode. Connect Supabase and deploy the admin-invite-user function to create real accounts.');
+  if (isDemoMode()) {
+    return demoInviteUser(input);
   }
 
-  // Attempt Supabase Edge Function with a 4.5s timeout
+  const cleanEmail = input.email.trim().toLowerCase();
+  const cleanName = input.fullName.trim();
+  const cleanPhone = input.phone?.trim() || null;
+
+  // Attempt Supabase Edge Function with a 5s timeout
   try {
-    const invokePromise = supabase.functions.invoke('admin-invite-user', { body: input });
+    const invokePromise = supabase.functions.invoke('admin-invite-user', {
+      body: {
+        fullName: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone || undefined,
+        role: input.role,
+      },
+    });
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Edge function timeout')), 4500)
+      setTimeout(() => reject(new Error('Edge function timeout')), 5000)
     );
 
     const result = (await Promise.race([invokePromise, timeoutPromise])) as unknown as {
       data?: { profile?: import('@/types').Profile; error?: string };
-      error?: Error | null;
+      error?: Error | { message?: string } | null;
     };
 
     if (!result.error && result.data?.profile) {
@@ -1103,17 +1412,38 @@ export async function inviteAdminUser(input: {
     if (result.data?.error) {
       throw new Error(result.data.error);
     }
+    if (result.error && 'message' in result.error && result.error.message) {
+      const msg = result.error.message.toLowerCase();
+      if (msg.includes('already exists') || msg.includes('registered') || msg.includes('denied') || msg.includes('only administrators')) {
+        throw new Error(result.error.message);
+      }
+    }
   } catch (fnErr) {
+    const errText = fnErr instanceof Error ? fnErr.message : String(fnErr);
+    if (errText.toLowerCase().includes('already exists') || errText.toLowerCase().includes('already registered')) {
+      throw fnErr;
+    }
     console.warn('Edge Function admin-invite-user not deployed or timed out. Falling back to direct profile provisioning:', fnErr);
   }
 
-  // Fallback: Create provisional profile in public.profiles table
+  // Fallback: Check for existing profile by email first
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .eq('email', cleanEmail)
+    .maybeSingle();
+
+  if (existingProfile) {
+    throw new Error('An account with this email address already exists.');
+  }
+
+  // Create provisional profile in public.profiles table
   const provisionalId = crypto.randomUUID();
   const provisionalProfile: import('@/types').Profile = {
     id: provisionalId,
-    email: input.email.trim().toLowerCase(),
-    full_name: input.fullName.trim(),
-    phone: input.phone?.trim() || null,
+    email: cleanEmail,
+    full_name: cleanName,
+    phone: cleanPhone,
     role: input.role,
     avatar_url: null,
     is_active: true,
@@ -1128,9 +1458,42 @@ export async function inviteAdminUser(input: {
     .maybeSingle();
 
   if (insertError) {
-    throw new Error(
-      `Could not invoke invite function (Edge Function not deployed on Supabase). Database insert error: ${insertError.message}`
-    );
+    throw new Error(`Database insert error: ${insertError.message}`);
+  }
+
+  // Provision corresponding volunteer record if volunteer role chosen
+  if (input.role === 'volunteer') {
+    try {
+      await supabase.from('volunteers').upsert({
+        user_id: provisionalId,
+        is_verified: true,
+        verification_status: 'verified',
+      });
+    } catch (vErr) {
+      console.warn('Could not provision volunteer record:', vErr);
+    }
+  }
+
+  // Record audit log for fallback invitation
+  try {
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    await supabase.from('audit_logs').insert({
+      actor_id: currentUser?.id || provisionalId,
+      action: 'invite_user',
+      entity_type: 'profile',
+      entity_id: provisionalId,
+      details: {
+        email: cleanEmail,
+        role: input.role,
+        target_name: cleanName,
+        target_email: cleanEmail,
+        target_role: input.role,
+        result: 'success',
+      },
+      result: 'success',
+    });
+  } catch (auditErr) {
+    console.warn('Could not insert fallback audit log:', auditErr);
   }
 
   return (inserted as unknown as import('@/types').Profile) || provisionalProfile;
